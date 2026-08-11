@@ -16,6 +16,7 @@ const BackupVersion = 1
 type BackupHousehold struct {
 	Name                  string
 	SplitMethod           string
+	WeightBasis           string
 	IncludeVariableIncome bool
 	DisplayCurrency       string
 	ManualGoldPriceCents  *int64
@@ -92,6 +93,7 @@ func (s *Store) ExportHousehold(householdID int64) (*Backup, error) {
 		ExportedAt: now(),
 		Household: BackupHousehold{
 			Name: hh.Name, SplitMethod: hh.SplitMethod,
+			WeightBasis:           hh.WeightBasis,
 			IncludeVariableIncome: hh.IncludeVariableIncome,
 			DisplayCurrency:       hh.DisplayCurrency,
 			ManualGoldPriceCents:  hh.ManualGoldPriceCents,
@@ -260,9 +262,13 @@ func (s *Store) ImportHousehold(householdID int64, b *Backup) (ImportCounts, err
 		return s
 	}
 
-	if _, err := tx.Exec(`UPDATE households SET name = ?, split_method = ?, include_variable_income = ?,
+	// An older file has no basis; the column is NOT NULL, so default it.
+	if b.Household.WeightBasis == "" {
+		b.Household.WeightBasis = "net"
+	}
+	if _, err := tx.Exec(`UPDATE households SET name = ?, split_method = ?, weight_basis = ?, include_variable_income = ?,
 		display_currency = ?, manual_gold_price_cents = ? WHERE id = ?`,
-		b.Household.Name, b.Household.SplitMethod, b.Household.IncludeVariableIncome,
+		b.Household.Name, b.Household.SplitMethod, b.Household.WeightBasis, b.Household.IncludeVariableIncome,
 		b.Household.DisplayCurrency, b.Household.ManualGoldPriceCents, householdID); err != nil {
 		return c, err
 	}

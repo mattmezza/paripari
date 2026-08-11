@@ -33,12 +33,12 @@ func (s *Store) CreateHousehold(name string) (*model.Household, error) {
 	return s.Household(id)
 }
 
-const householdCols = `id, name, split_method, include_variable_income, display_currency,
+const householdCols = `id, name, split_method, weight_basis, include_variable_income, display_currency,
 	manual_gold_price_cents, invite_code, created_at`
 
 func scanHousehold(row *sql.Row) (*model.Household, error) {
 	var h model.Household
-	err := row.Scan(&h.ID, &h.Name, &h.SplitMethod, &h.IncludeVariableIncome, &h.DisplayCurrency,
+	err := row.Scan(&h.ID, &h.Name, &h.SplitMethod, &h.WeightBasis, &h.IncludeVariableIncome, &h.DisplayCurrency,
 		&h.ManualGoldPriceCents, &h.InviteCode, &h.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -72,9 +72,9 @@ func (s *Store) HouseholdIDs() ([]int64, error) {
 }
 
 func (s *Store) UpdateHouseholdSettings(h *model.Household) error {
-	_, err := s.DB.Exec(`UPDATE households SET name = ?, split_method = ?, include_variable_income = ?,
+	_, err := s.DB.Exec(`UPDATE households SET name = ?, split_method = ?, weight_basis = ?, include_variable_income = ?,
 		display_currency = ?, manual_gold_price_cents = ? WHERE id = ?`,
-		h.Name, h.SplitMethod, h.IncludeVariableIncome, h.DisplayCurrency, h.ManualGoldPriceCents, h.ID)
+		h.Name, h.SplitMethod, h.WeightBasis, h.IncludeVariableIncome, h.DisplayCurrency, h.ManualGoldPriceCents, h.ID)
 	return err
 }
 

@@ -124,3 +124,69 @@ func TestShareOfRoundingInvariant(t *testing.T) {
 		}
 	}
 }
+
+// The two bases disagree exactly when the partners are taxed differently:
+// the same gross gap produces a narrower split on net if the higher earner
+// also loses more to deductions. Figures are the real-world case that
+// prompted the option.
+func TestSplitRatioGrossVsNet(t *testing.T) {
+	src := func(user int64, grossYearly int64, deductionBP int64) model.IncomeSource {
+		return model.IncomeSource{
+			UserID: user, Kind: "fixed", Currency: "CHF", GrossYearlyCents: grossYearly,
+			Deductions: []model.IncomeDeduction{{Period: "percent", PercentBP: deductionBP}},
+		}
+	}
+	// A: 149_860.00 gross, 22.7% out. B: 187_000.00 gross, 29.4% out.
+	incomes := PartnerIncomes([]model.IncomeSource{
+		src(1, 14986000, 2270),
+		src(2, 18700000, 2940),
+	}, nil, "CHF")
+
+	hh := model.Household{SplitMethod: "income_weighted", IncludeVariableIncome: true}
+
+	net := SplitRatio(hh, incomes, 1, 2)
+	if net.Basis != "net" {
+		t.Errorf("default basis = %q, want net", net.Basis)
+	}
+	hh.WeightBasis = "gross"
+	gross := SplitRatio(hh, incomes, 1, 2)
+	if gross.Basis != "gross" {
+		t.Errorf("basis = %q, want gross", gross.Basis)
+	}
+
+	// Gross ignores B's heavier deductions, so B carries more of the bill.
+	if gross.B <= net.B {
+		t.Errorf("gross B share %.4f should exceed net B share %.4f", gross.B, net.B)
+	}
+	if d := gross.A + gross.B; d != 1 {
+		t.Errorf("shares sum to %v, want 1", d)
+	}
+	// Hand-computed: 149860/336860 = 0.444905, 187000/336860 = 0.555095.
+	if gross.A < 0.4448 || gross.A > 0.4450 {
+		t.Errorf("gross A = %.6f, want ~0.444905", gross.A)
+	}
+	// And cent-exact splitting still holds on the gross ratio.
+	a, b := ShareOf(8500, gross)
+	if a+b != 8500 {
+		t.Errorf("shares %d + %d != 8500", a, b)
+	}
+}
+
+// A gross basis with variable income excluded must use the fixed gross bucket,
+// not the whole gross.
+func TestSplitRatioGrossExcludesVariable(t *testing.T) {
+	incomes := PartnerIncomes([]model.IncomeSource{
+		{UserID: 1, Kind: "fixed", Currency: "CHF", GrossYearlyCents: 12000000},
+		{UserID: 1, Kind: "variable", Currency: "CHF", GrossYearlyCents: 12000000},
+		{UserID: 2, Kind: "fixed", Currency: "CHF", GrossYearlyCents: 12000000},
+	}, nil, "CHF")
+	hh := model.Household{SplitMethod: "income_weighted", WeightBasis: "gross"}
+
+	if r := SplitRatio(hh, incomes, 1, 2); r.A != 0.5 {
+		t.Errorf("variable excluded: A = %v, want 0.5", r.A)
+	}
+	hh.IncludeVariableIncome = true
+	if r := SplitRatio(hh, incomes, 1, 2); r.A < 0.6666 || r.A > 0.6667 {
+		t.Errorf("variable included: A = %v, want ~0.6667", r.A)
+	}
+}

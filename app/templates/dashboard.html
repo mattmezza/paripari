@@ -116,7 +116,7 @@
 
 {{if $d.HasPartner}}
 <div class="card" style="margin-block-start:1rem">
-  <div class="card__title">Contribution split · {{if eq $ov.Ratio.Method "income_weighted"}}income-weighted{{else}}50/50{{end}}</div>
+  <div class="card__title">Contribution split · {{if eq $ov.Ratio.Method "income_weighted"}}income-weighted on {{$ov.Ratio.Basis}}{{else}}50/50{{end}}</div>
   <div class="split" style="--a:{{printf "%.4f" $ov.Ratio.A}}fr;--b:{{printf "%.4f" $ov.Ratio.B}}fr;margin-block-start:.75rem">
     <span class="split__a"></span><span class="split__b"></span>
   </div>

@@ -6,6 +6,7 @@ type Household struct {
 	ID                    int64
 	Name                  string
 	SplitMethod           string // fifty_fifty | income_weighted
+	WeightBasis           string // net | gross — which income the weighting follows
 	IncludeVariableIncome bool
 	DisplayCurrency       string
 	ManualGoldPriceCents  *int64

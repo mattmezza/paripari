@@ -71,6 +71,9 @@ type PartnerIncome struct {
 	// DeductionsMonthlyCents is exactly Gross − Total, so the three always
 	// reconcile on screen even after per-source rounding and conversion.
 	GrossMonthlyCents      int64
+	// GrossFixedMonthlyCents excludes variable sources, mirroring
+	// FixedMonthlyCents — the gross-basis split needs the same choice.
+	GrossFixedMonthlyCents int64
 	DeductionsMonthlyCents int64
 	Sources                []IncomeCalc
 }
@@ -106,6 +109,9 @@ func PartnerIncomes(sources []model.IncomeSource, rates Rates, display string) m
 		p.TotalMonthlyCents = p.FixedMonthlyCents + p.VariableMonthlyCents
 		gross := conv(rates, divRound(s.GrossYearlyCents, 12), s.Currency, display)
 		p.GrossMonthlyCents += gross
+		if s.Kind != "variable" {
+			p.GrossFixedMonthlyCents += gross
+		}
 		p.DeductionsMonthlyCents += gross - net
 		out[s.UserID] = p
 	}

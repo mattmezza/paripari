@@ -19,9 +19,24 @@
         </label>
         <label style="display:flex;align-items:center;gap:.5rem;min-height:44px">
           <input type="radio" name="split_method" value="income_weighted" x-model="method" {{if eq .Household.SplitMethod "income_weighted"}}checked{{end}}>
-          Income-weighted — proportional to net income
+          Income-weighted — proportional to income
         </label>
       </div>
+    </div>
+
+    <div class="field" style="margin:0" x-show="method === 'income_weighted'" x-cloak>
+      <label class="label">Weigh by</label>
+      <div style="display:grid;gap:.5rem">
+        <label style="display:flex;align-items:center;gap:.5rem;min-height:44px">
+          <input type="radio" name="weight_basis" value="net" {{if ne .Household.WeightBasis "gross"}}checked{{end}}>
+          Net income — what actually lands in your accounts, after deductions
+        </label>
+        <label style="display:flex;align-items:center;gap:.5rem;min-height:44px">
+          <input type="radio" name="weight_basis" value="gross" {{if eq .Household.WeightBasis "gross"}}checked{{end}}>
+          Gross income — before deductions, ignoring how each of you is taxed
+        </label>
+      </div>
+      <span class="helper">The two disagree whenever one partner is taxed more heavily than the other: on net, a higher deduction rate lowers that partner's share.</span>
     </div>
 
     <div class="field" style="margin:0" x-show="method === 'income_weighted'" x-cloak>

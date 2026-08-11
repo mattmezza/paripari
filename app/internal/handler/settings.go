@@ -133,11 +133,18 @@ func registerSettings(mux *http.ServeMux, d *Deps) {
 			partial(w, r, "settings-household", "", "Pick a valid split method.", http.StatusUnprocessableEntity)
 			return
 		}
+		// The radio only renders for income_weighted, so an absent value means
+		// "net" rather than a bad request.
+		basis := r.PostFormValue("weight_basis")
+		if basis != "gross" {
+			basis = "net"
+		}
 		if !ValidCurrency(currency) {
 			partial(w, r, "settings-household", "", "Pick a supported display currency.", http.StatusUnprocessableEntity)
 			return
 		}
 		hh.SplitMethod = splitMethod
+		hh.WeightBasis = basis
 		hh.IncludeVariableIncome = r.PostFormValue("include_variable_income") == "on"
 		hh.DisplayCurrency = currency
 		if err := d.Store.UpdateHouseholdSettings(hh); err != nil {

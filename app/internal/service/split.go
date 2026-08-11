@@ -7,17 +7,22 @@ type Ratio struct {
 	AUserID, BUserID int64
 	A, B             float64
 	Method           string // fifty_fifty | income_weighted
+	Basis            string // net | gross, meaningful only for income_weighted
 }
 
 // SplitRatio computes the contribution ratio for the two partners. With
-// income_weighted the ratio follows net monthly income (variable income
-// included only when the household says so). Zero total income falls back to
-// 50/50, as does the fifty_fifty method.
+// income_weighted the ratio follows monthly income — net by default, gross
+// when the household sets WeightBasis to "gross" (variable income included
+// only when the household says so). Zero total income falls back to 50/50, as
+// does the fifty_fifty method.
 func SplitRatio(h model.Household, incomes map[int64]PartnerIncome, aUserID, bUserID int64) Ratio {
 	r := Ratio{AUserID: aUserID, BUserID: bUserID, A: 0.5, B: 0.5, Method: h.SplitMethod}
 	if h.SplitMethod != "income_weighted" {
 		r.Method = "fifty_fifty"
 		return r
+	}
+	if r.Basis = h.WeightBasis; r.Basis != "gross" {
+		r.Basis = "net"
 	}
 	a, b := ratioBase(incomes[aUserID], h), ratioBase(incomes[bUserID], h)
 	total := a + b
@@ -30,6 +35,12 @@ func SplitRatio(h model.Household, incomes map[int64]PartnerIncome, aUserID, bUs
 }
 
 func ratioBase(p PartnerIncome, h model.Household) int64 {
+	if h.WeightBasis == "gross" {
+		if h.IncludeVariableIncome {
+			return p.GrossMonthlyCents
+		}
+		return p.GrossFixedMonthlyCents
+	}
 	if h.IncludeVariableIncome {
 		return p.TotalMonthlyCents
 	}

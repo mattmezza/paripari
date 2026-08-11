@@ -162,6 +162,10 @@ func ValidateBackup(b *store.Backup) error {
 	if !oneOf(h.SplitMethod, "fifty_fifty", "income_weighted") {
 		return fmt.Errorf("household split method %q is not valid", h.SplitMethod)
 	}
+	// Files written before the gross basis existed carry no value at all.
+	if h.WeightBasis != "" && !oneOf(h.WeightBasis, "net", "gross") {
+		return fmt.Errorf("household weight basis %q is not valid", h.WeightBasis)
+	}
 	if !ValidCurrency(h.DisplayCurrency) {
 		return fmt.Errorf("household display currency %q is not supported", h.DisplayCurrency)
 	}
