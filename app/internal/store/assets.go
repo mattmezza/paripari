@@ -35,7 +35,7 @@ func (s *Store) Asset(householdID, id int64) (*model.Asset, error) {
 }
 
 func (s *Store) Assets(householdID int64) ([]model.Asset, error) {
-	rows, err := s.DB.Query(`SELECT `+assetCols+` FROM assets WHERE household_id = ? ORDER BY kind, name`, householdID)
+	rows, err := s.DB.Query(`SELECT `+assetCols+` FROM assets WHERE household_id = ? ORDER BY kind, id`, householdID)
 	if err != nil {
 		return nil, err
 	}

@@ -43,8 +43,11 @@ func (s *Store) Expense(householdID, id int64) (*model.Expense, error) {
 }
 
 func (s *Store) Expenses(householdID int64) ([]model.Expense, error) {
+	// Insertion order within each category, so a new expense appends to the
+	// bottom of its group instead of sorting itself into the middle (or, when
+	// it has no subcategory, to the very top of the page).
 	rows, err := s.DB.Query(`SELECT `+expenseCols+` FROM expenses WHERE household_id = ?
-		ORDER BY category, subcategory, name`, householdID)
+		ORDER BY category, id`, householdID)
 	if err != nil {
 		return nil, err
 	}

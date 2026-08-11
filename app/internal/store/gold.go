@@ -38,7 +38,7 @@ func (s *Store) GoldItem(householdID, id int64) (*model.GoldItem, error) {
 }
 
 func (s *Store) GoldItems(householdID int64) ([]model.GoldItem, error) {
-	rows, err := s.DB.Query(`SELECT `+goldCols+` FROM gold_items WHERE household_id = ? ORDER BY name`, householdID)
+	rows, err := s.DB.Query(`SELECT `+goldCols+` FROM gold_items WHERE household_id = ? ORDER BY id`, householdID)
 	if err != nil {
 		return nil, err
 	}

@@ -43,7 +43,7 @@ func (s *Store) Account(householdID, id int64) (*model.Account, error) {
 }
 
 func (s *Store) Accounts(householdID int64) ([]model.Account, error) {
-	rows, err := s.DB.Query(`SELECT `+accountCols+` FROM accounts WHERE household_id = ? ORDER BY purpose, name`, householdID)
+	rows, err := s.DB.Query(`SELECT `+accountCols+` FROM accounts WHERE household_id = ? ORDER BY purpose, id`, householdID)
 	if err != nil {
 		return nil, err
 	}
