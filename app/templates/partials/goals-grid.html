@@ -1,0 +1,51 @@
+{{/*
+  The balanced goal-card grid, plus a permanent "new goal" card at the end.
+  Create/update/delete all swap this whole grid (outerHTML) — membership and
+  ordering change on every mutation anyway.
+
+  Dot is *handler.goalsData.
+*/}}
+{{define "goals-grid"}}
+<div id="goals-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem">
+  {{range .Goals}}{{template "goals-card" .}}{{end}}
+
+  <div class="card" style="border-style:dashed;display:flex;flex-direction:column">
+    <h3 class="card__title" style="margin-block-end:.75rem">New goal</h3>
+    <div class="field">
+      <label class="label" for="goal-new-name">Name</label>
+      <input class="input" id="goal-new-name" name="name" placeholder="e.g. Emergency fund">
+    </div>
+    <div class="field" style="display:flex;gap:.5rem">
+      <div style="flex:1">
+        <label class="label" for="goal-new-target">Target</label>
+        <input class="input input--figure" id="goal-new-target" name="target_amount" placeholder="0.00">
+      </div>
+      <div style="width:6rem">
+        <label class="label" for="goal-new-currency">Currency</label>
+        <select class="select" id="goal-new-currency" name="currency">
+          {{range .Currencies}}<option value="{{.}}">{{.}}</option>{{end}}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label class="label" for="goal-new-category">Category</label>
+      <select class="select" id="goal-new-category" name="category">
+        <option value="safety_net">Safety net</option>
+        <option value="property">Property</option>
+        <option value="education">Education</option>
+        <option value="other" selected>Other</option>
+      </select>
+    </div>
+    <div class="field" style="margin-block-end:.5rem">
+      <label class="label" for="goal-new-deadline">Deadline <span class="label__req">(optional)</span></label>
+      <input class="input" type="date" id="goal-new-deadline" name="deadline">
+    </div>
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <span id="goal-form-error"></span>
+    <button type="button" class="btn btn--primary" style="margin-block-start:auto"
+      hx-post="/goals" hx-include="closest .card" hx-target="#goals-grid" hx-swap="outerHTML">Add goal</button>
+  </div>
+</div>
+{{end}}
+
+{{template "goals-grid" .}}

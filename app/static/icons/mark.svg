@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PariPari">
+  <!-- Hallmark · PariPari mark: two equal bars, mirrored about the centre.
+       The "pari" idea drawn as geometry — same weight, same length, opposite
+       inset. Single accent (cobalt) on paper. -->
+  <rect width="512" height="512" rx="112" fill="#f8fafc"/>
+  <g fill="#245fd4">
+    <rect x="104" y="186" width="304" height="56" rx="28"/>
+    <rect x="104" y="270" width="304" height="56" rx="28"/>
+  </g>
+  <g fill="#f8fafc">
+    <circle cx="132" cy="214" r="14"/>
+    <circle cx="380" cy="298" r="14"/>
+  </g>
+</svg>

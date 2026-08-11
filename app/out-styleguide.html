@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>T — PariPari</title>
+  <meta name="description" content="D">
+  <link rel="canonical" href="https://paripari.app/login">
+  <meta name="robots" content="noindex, nofollow">
+
+  
+  <script>
+    (function () {
+      try {
+        var c = localStorage.getItem("pp-theme");
+        var d = c ? c === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        if (d) document.documentElement.classList.add("dark");
+      } catch (e) {}
+    })();
+  </script>
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c1013" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://paripari.app/login">
+  <meta property="og:title" content="T — PariPari">
+  <meta property="og:description" content="D">
+  <meta property="og:image" content="https://paripari.app/static/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PariPari — household finance, on equal terms.">
+  <meta property="og:site_name" content="PariPari">
+  <meta property="og:locale" content="en_US">
+
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="T — PariPari">
+  <meta name="twitter:description" content="D">
+  <meta name="twitter:image" content="https://paripari.app/static/og-image.png">
+
+  
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/mark.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PariPari">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  
+  <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/app.min.css">
+
+  <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+
+  
+
+  
+</head>
+
+<body hx-boost="true" hx-headers='{"X-CSRF-Token": "tok"}'>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  
+  <div class="shell">
+    
+<nav class="sidebar" aria-label="Sections">
+  <a href="/" class="wordmark" aria-label="PariPari — dashboard"
+     style="font-size:1.25rem;padding:.25rem .75rem 1rem;text-decoration:none">
+    
+<svg class="wordmark-mark" viewBox="96 178 320 156" aria-hidden="true">
+  <mask id="pp-mark">
+    <rect x="96" y="178" width="320" height="156" fill="black"/>
+    <rect x="104" y="186" width="304" height="56" rx="28" fill="white"/>
+    <rect x="104" y="270" width="304" height="56" rx="28" fill="white"/>
+    <circle cx="132" cy="214" r="14" fill="black"/>
+    <circle cx="380" cy="298" r="14" fill="black"/>
+  </mask>
+  <rect x="96" y="178" width="320" height="156" fill="currentColor" mask="url(#pp-mark)"/>
+</svg>
+Pari<span class="wordmark__b">Pari</span>
+  </a>
+
+  <a href="/"            class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/>
+</svg>
+Dashboard</a>
+  <a href="/income"      class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7V6a2 2 0 0 1 2-2h11"/><path d="M16 13h2"/>
+</svg>
+Income</a>
+  <a href="/expenses"    class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18l-2.5-1.6L14 21l-2-1.6L10 21l-2.5-1.6L5 21z"/><path d="M9 8h6M9 12h6"/>
+</svg>
+Expenses</a>
+  <a href="/accounts"    class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 4l9 6"/><path d="M5.5 10.5v9M18.5 10.5v9M10 10.5v9M14 10.5v9"/><path d="M3 20h18"/>
+</svg>
+Accounts</a>
+  <a href="/transfers"   class="nav__link" >
+    
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13M13 4l4 4-4 4"/><path d="M20 16H7M11 20l-4-4 4-4"/>
+</svg>
+Transfers
+    <span class="pill pill--attention" style="margin-inline-start:auto"><span class="pill__dot"></span>New</span>
+  </a>
+  <a href="/projections" class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>
+</svg>
+Projections</a>
+  <a href="/scenarios"   class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
+</svg>
+Scenarios</a>
+  <a href="/goals"       class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>
+</svg>
+Goals</a>
+  <a href="/net-worth"   class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/>
+</svg>
+Net worth</a>
+  <a href="/gold"        class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15h6.5v5H4zM13.5 15H20v5h-6.5zM8.5 9.5h7v5h-7z"/>
+</svg>
+Gold</a>
+  <a href="/trips"       class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>
+</svg>
+Trips</a>
+
+  <div style="margin-block-start:auto;padding-block-start:1rem">
+    <a href="/settings" class="nav__link" >
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17.5 7H20M4 17h3.5M12 17h8"/><circle cx="15" cy="7" r="2.2"/><circle cx="9.5" cy="17" r="2.2"/>
+</svg>
+Settings</a>
+    <button type="button" class="nav__link" data-theme-toggle aria-pressed="false" style="width:100%;background:none;border:0;cursor:pointer;text-align:start">
+      
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>
+</svg>
+<span>Theme</span>
+    </button>
+  </div>
+</nav>
+
+
+    <main id="main" class="shell__main">
+      
+<div id="flash" class="pp-container" role="status" aria-live="polite">
+  
+  <div class="flash">
+    <span class="flash__mark" aria-hidden="true">·</span>
+    <span>hi</span>
+  </div>
+  
+</div>
+
+      <div class="pp-container">
+        
+
+<h1 style="margin-block-end:1.5rem">Style guide</h1>
+
+<section style="margin-block-end:2.5rem">
+  <h2 style="margin-block-end:.75rem">Tokens</h2>
+  <p class="auth__meta" style="margin-block:0 1rem">
+    Use the Tailwind utility (<code>bg-paper</code>, <code>text-ink</code>,
+    <code>border-rule</code>) or the raw custom property
+    (<code>var(--color-accent)</code>). Never a hex literal.
+  </p>
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Token</th><th>Role</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><code>--color-paper</code></td><td>Page ground</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;border:1px solid var(--color-rule);background:var(--color-paper)"></span></td></tr>
+        <tr><td><code>--color-surface</code></td><td>Card ground</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;border:1px solid var(--color-rule);background:var(--color-surface)"></span></td></tr>
+        <tr><td><code>--color-surface-2</code></td><td>Hover / raised</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-surface-2)"></span></td></tr>
+        <tr><td><code>--color-rule</code></td><td>Hairline</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-rule)"></span></td></tr>
+        <tr><td><code>--color-muted</code></td><td>Labels, captions</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-muted)"></span></td></tr>
+        <tr><td><code>--color-ink-2</code></td><td>Secondary text</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-ink-2)"></span></td></tr>
+        <tr><td><code>--color-ink</code></td><td>Primary text, figures</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-ink)"></span></td></tr>
+        <tr><td><code>--color-accent</code></td><td>The single accent — cobalt</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-accent)"></span></td></tr>
+        <tr><td><code>--color-positive</code></td><td>Growth, on-track</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-positive)"></span></td></tr>
+        <tr><td><code>--color-warning</code></td><td>Attention, changed</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-warning)"></span></td></tr>
+        <tr><td><code>--color-danger</code></td><td>Destructive, over budget</td><td><span style="display:block;width:3rem;height:1.25rem;border-radius:4px;background:var(--color-danger)"></span></td></tr>
+        <tr><td><code>--color-partner-a</code> / <code>-b</code></td><td>Charts and split bars only</td><td><span style="display:flex;gap:2px"><span style="display:block;width:1.5rem;height:1.25rem;border-radius:4px 0 0 4px;background:var(--color-partner-a)"></span><span style="display:block;width:1.5rem;height:1.25rem;border-radius:0 4px 4px 0;background:var(--color-partner-b)"></span></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section style="margin-block-end:2.5rem">
+  <h2 style="margin-block-end:.75rem">Type</h2>
+  <div class="card">
+    <p style="font-family:var(--font-display);font-size:var(--text-display);font-weight:500;letter-spacing:-.03em;line-height:1.08;margin:0">Space Grotesk 500</p>
+    <p style="font-family:var(--font-display);font-weight:700;font-size:1.5rem;margin:.75rem 0 0">Space Grotesk 700 — wordmark and figures</p>
+    <p style="margin:1rem 0 0">Inter 400 carries the body. Measure stays under 65ch, line-height 1.55, and every figure is tabular so columns line up.</p>
+    <p style="margin:.5rem 0 0;font-weight:600">Inter 600 for emphasis. Headings are roman — never italic.</p>
+    <p class="figure" style="margin-block-start:1rem"><span class="figure__cur">CHF</span>8'954.00</p>
+  </div>
+</section>
+
+<section style="margin-block-end:2.5rem">
+  <h2 style="margin-block-end:.75rem">Buttons — eight states</h2>
+  <div class="card" style="display:flex;flex-wrap:wrap;gap:.625rem;align-items:center">
+    <button class="btn btn--primary">Default</button>
+    <button class="btn btn--primary" data-state="loading">Saving</button>
+    <button class="btn btn--primary" disabled>Disabled</button>
+    <button class="btn">Secondary</button>
+    <button class="btn" data-state="done">Copied</button>
+    <button class="btn" data-state="error">Failed</button>
+    <button class="btn btn--ghost">Ghost</button>
+    <button class="btn btn--danger">Delete</button>
+  </div>
+  <p class="auth__meta">
+    Hover and active come from the class. Focus is a 2px
+    <code>--color-focus</code> ring at 2px offset, instant, never animated. Tab
+    through the row to see it.
+  </p>
+</section>
+
+<section style="margin-block-end:2.5rem">
+  <h2 style="margin-block-end:.75rem">Fields</h2>
+  <div class="card">
+    <div class="field">
+      <label class="label" for="sg-a">Default</label>
+      <input class="input" id="sg-a" placeholder="you@example.com">
+      <span class="helper">Helper text holds its line so errors don't shift the page.</span>
+    </div>
+    <div class="field">
+      <label class="label" for="sg-b">Error</label>
+      <input class="input" id="sg-b" value="not-an-email" aria-invalid="true" aria-describedby="sg-b-h">
+      <span class="helper helper--error" id="sg-b-h">That address is missing an @. Try elena@example.com.</span>
+    </div>
+    <div class="field">
+      <label class="label" for="sg-c">Success</label>
+      <input class="input" id="sg-c" data-state="ok" value="elena@example.com">
+      <span class="helper">Available.</span>
+    </div>
+    <div class="field">
+      <label class="label" for="sg-d">Disabled</label>
+      <input class="input" id="sg-d" value="Locked while the household syncs" disabled>
+      <span class="helper">Waiting on the FX refresh.</span>
+    </div>
+    <div class="field">
+      <label class="label" for="sg-e">Amount</label>
+      <input class="input input--figure" id="sg-e" inputmode="decimal" value="1'250.00">
+      <span class="helper">Money inputs are right-aligned and tabular.</span>
+    </div>
+  </div>
+</section>
+
+<section style="margin-block-end:2.5rem">
+  <h2 style="margin-block-end:.75rem">The pair — split bar</h2>
+  <div class="card">
+    <div class="split" style="--a:44.49fr;--b:55.51fr">
+      <span class="split__a"></span><span class="split__b"></span>
+    </div>
+    <div class="split-legend">
+      <div>
+        <div class="split-legend__name"><span class="split-legend__dot split-legend__dot--a"></span>Elena</div>
+        <div class="figure figure--sm" data-tick><span class="figure__cur">CHF</span>1'423.65</div>
+      </div>
+      <div>
+        <div class="split-legend__name"><span class="split-legend__dot split-legend__dot--b"></span>Sam</div>
+        <div class="figure figure--sm" data-tick><span class="figure__cur">CHF</span>1'776.35</div>
+      </div>
+    </div>
+    <p class="auth__meta">
+      Two columns of equal width, equal weight, mirrored alignment. Set the
+      ratio with <code>--a</code> / <code>--b</code> as <code>fr</code> values;
+      the grid does the rest.
+    </p>
+  </div>
+</section>
+
+<section style="margin-block-end:2.5rem">
+  <h2 style="margin-block-end:.75rem">Table</h2>
+  <div class="card">
+    <div class="table-scroll">
+      <table class="table">
+        <thead><tr><th>From</th><th>To</th><th class="num">Amount</th><th>Reference</th></tr></thead>
+        <tbody>
+          <tr><td>Elena · personal</td><td>Common checking</td><td class="num" data-tick>1'423.65</td><td>Monthly contribution</td></tr>
+          <tr><td>Sam · personal</td><td>Common checking</td><td class="num" data-tick>1'776.35</td><td>Monthly contribution</td></tr>
+          <tr><td>Elena · personal</td><td>Common savings</td><td class="num" data-tick>400.00</td><td>Savings contribution</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section style="margin-block-end:2.5rem">
+  <h2 style="margin-block-end:.75rem">Number tick</h2>
+  <div class="card" id="sg-tick">
+    <p class="figure figure--lg" data-tick><span class="figure__cur">CHF</span>3'600.00</p>
+    <p class="auth__meta">
+      Handlers return <code>HX-Trigger: pp:recalc</code> after anything that
+      moves money. Every <code>[data-tick]</code> in the swapped region pulses
+      once. Reduced motion collapses it to a crossfade.
+    </p>
+    <button class="btn btn--sm" onclick="document.getElementById('sg-tick').dispatchEvent(new CustomEvent('pp:recalc',{bubbles:true}))">
+      Fire pp:recalc
+    </button>
+  </div>
+</section>
+
+<section style="margin-block-end:2.5rem">
+  <h2 style="margin-block-end:.75rem">Pills, flash, skeleton</h2>
+  <div class="card" style="display:grid;gap:1rem">
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+      <span class="pill">Neutral</span>
+      <span class="pill pill--attention"><span class="pill__dot"></span>Transfers changed</span>
+      <span class="pill pill--positive">On track</span>
+      <span class="pill pill--danger">Over budget</span>
+      <span class="pill pill--accent">Common</span>
+    </div>
+    <div class="flash"><span class="flash__mark">·</span><span>Split method set to income-weighted.</span></div>
+    <div class="flash flash--ok"><span class="flash__mark">✓</span><span>Gold spot price refreshed.</span></div>
+    <div class="flash flash--error"><span class="flash__mark">⚠</span><span>Couldn't reach the FX provider. Showing yesterday's rates.</span></div>
+    <div style="display:grid;gap:.5rem">
+      <span class="skeleton" style="width:60%">&nbsp;</span>
+      <span class="skeleton" style="width:35%;height:2rem">&nbsp;</span>
+    </div>
+  </div>
+</section>
+
+
+      </div>
+    </main>
+  </div>
+
+  
+<nav class="tabbar" aria-label="Sections">
+  <a href="/" class="tabbar__item" >
+    
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/>
+</svg>
+<span>Home</span>
+  </a>
+  <a href="/expenses" class="tabbar__item" >
+    
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18l-2.5-1.6L14 21l-2-1.6L10 21l-2.5-1.6L5 21z"/><path d="M9 8h6M9 12h6"/>
+</svg>
+<span>Expenses</span>
+  </a>
+  <a href="/transfers" class="tabbar__item" style="position:relative" >
+    
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13M13 4l4 4-4 4"/><path d="M20 16H7M11 20l-4-4 4-4"/>
+</svg>
+<span>Transfers</span>
+    <span class="tabbar__badge"></span><span class="sr-only">Transfer amounts changed</span>
+  </a>
+  <a href="/projections" class="tabbar__item" >
+    
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>
+</svg>
+<span>Forecast</span>
+  </a>
+  <button type="button" class="tabbar__item" data-sheet-open="more-sheet" aria-haspopup="dialog">
+    
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h.01M12 12h.01M20 12h.01" stroke-width="2.5"/>
+</svg>
+<span>More</span>
+  </button>
+</nav>
+
+  
+<dialog class="sheet" id="more-sheet" aria-label="More sections">
+  <div class="sheet__grip"></div>
+  <div class="sheet__body">
+    <a href="/income"    class="nav__link">
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7V6a2 2 0 0 1 2-2h11"/><path d="M16 13h2"/>
+</svg>
+Income</a>
+    <a href="/accounts"  class="nav__link">
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 4l9 6"/><path d="M5.5 10.5v9M18.5 10.5v9M10 10.5v9M14 10.5v9"/><path d="M3 20h18"/>
+</svg>
+Accounts</a>
+    <a href="/scenarios" class="nav__link">
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
+</svg>
+Scenarios</a>
+    <a href="/goals"     class="nav__link">
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>
+</svg>
+Goals</a>
+    <a href="/net-worth" class="nav__link">
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/>
+</svg>
+Net worth</a>
+    <a href="/gold"      class="nav__link">
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15h6.5v5H4zM13.5 15H20v5h-6.5zM8.5 9.5h7v5h-7z"/>
+</svg>
+Gold</a>
+    <a href="/trips"     class="nav__link">
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>
+</svg>
+Trips</a>
+    <a href="/settings"  class="nav__link">
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17.5 7H20M4 17h3.5M12 17h8"/><circle cx="15" cy="7" r="2.2"/><circle cx="9.5" cy="17" r="2.2"/>
+</svg>
+Settings</a>
+    <button type="button" class="nav__link" data-theme-toggle aria-pressed="false"
+            style="background:none;border:0;cursor:pointer;text-align:start;width:100%">
+      
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>
+</svg>
+<span>Theme</span>
+    </button>
+    <button type="button" class="nav__link" data-sheet-close
+            style="background:none;border:0;cursor:pointer;text-align:start;width:100%">
+      
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/>
+</svg>
+<span>Close</span>
+    </button>
+  </div>
+</dialog>
+
+  
+</body>
+</html>

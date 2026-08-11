@@ -1,0 +1,57 @@
+{{/* Grouped expense list — the whole thing is re-rendered on every mutation
+     so subtotals always agree. Dot: *expensesData. */}}
+{{define "expenses-list"}}
+<div id="expenses-list" style="display:grid;gap:1rem;padding-block-end:6rem">
+  {{if not .Groups}}
+  <div class="card">
+    <p class="auth__meta">No expenses yet in this view.</p>
+  </div>
+  {{end}}
+
+  {{$root := .}}
+  {{range .Groups}}
+  <div class="card">
+    <div class="card__head">
+      <div>
+        <div class="card__title">{{if .Subcategory}}{{.Subcategory}}{{else}}Other{{end}}</div>
+        <span class="pill{{if eq .Category "common"}} pill--accent{{end}}" style="margin-block-start:.375rem">{{.Category}}</span>
+      </div>
+      <div class="figure figure--sm tnum" data-tick>{{money .SubtotalCents $root.Currency}}</div>
+    </div>
+
+    <div style="display:grid;gap:.625rem;margin-block-start:.75rem">
+      {{range .Rows}}
+      <div style="display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:center;padding-block:.375rem;border-block-start:1px solid var(--color-rule)">
+        <div>
+          <div>{{.Exp.Name}}{{if .Exp.IsSavings}} <span class="pill pill--positive" style="font-size:.6875rem">savings</span>{{end}}</div>
+          {{if .OwnerName}}<div class="auth__meta" style="margin:0">{{.OwnerName}}</div>
+          {{else}}<div class="auth__meta tnum" style="margin:0">{{$root.PartnerAName}} {{money .ShareACents $root.Currency}} · {{$root.PartnerBName}} {{money .ShareBCents $root.Currency}}</div>{{end}}
+        </div>
+        <form hx-put="/expenses/{{.Exp.ID}}" hx-trigger="change" hx-target="#expenses-list" hx-swap="outerHTML" style="display:contents">
+          <input type="hidden" name="csrf_token" value="{{$root.CSRF}}">
+          <input class="input input--figure" style="width:7rem" type="text" inputmode="decimal" name="amount" value="{{.AmountStr}}" aria-label="Amount for {{.Exp.Name}}">
+        </form>
+        <div style="display:flex;gap:.25rem">
+          <button type="button" class="btn btn--sm btn--ghost" hx-get="/expenses/{{.Exp.ID}}/edit" hx-target="#expenses-list" hx-swap="outerHTML">Edit</button>
+          <button type="button" class="btn btn--sm btn--danger" hx-delete="/expenses/{{.Exp.ID}}" hx-target="#expenses-list" hx-swap="outerHTML" hx-confirm="Delete {{.Exp.Name}}?">Delete</button>
+        </div>
+      </div>
+      {{end}}
+    </div>
+
+    <button type="button" class="btn btn--sm btn--ghost" style="margin-block-start:.75rem"
+      hx-get="/expenses/new?category={{.Category}}&subcategory={{.Subcategory}}" hx-target="#expenses-add-slot" hx-swap="innerHTML">
+      + Add to {{if .Subcategory}}{{.Subcategory}}{{else}}this group{{end}}
+    </button>
+  </div>
+  {{end}}
+
+  <div id="expenses-add-slot">
+    <button type="button" class="btn btn--ghost" style="width:100%;border-style:dashed"
+      hx-get="/expenses/new" hx-target="#expenses-add-slot" hx-swap="innerHTML">
+      + Add expense
+    </button>
+  </div>
+</div>
+{{end}}
+{{template "expenses-list" .}}

@@ -1,0 +1,182 @@
+{{/*
+  The whole swappable net-worth region: liquid/total toggle, breakdown +
+  history charts, and the real-estate/other-assets table with inline CRUD.
+  Any asset mutation swaps this whole block (outerHTML) so every number and
+  both charts stay in lockstep — simpler than per-field OOB swaps and, since
+  everything here lives in one contiguous section, no less correct.
+
+  Dot is *handler.nwData.
+*/}}
+{{define "networth-main"}}
+<div id="networth-main" x-data="{ tab: 'total' }">
+
+  <div class="card" style="margin-block-end:1rem">
+    <div style="display:flex;gap:.5rem;margin-block-end:.75rem" role="tablist" aria-label="Net worth view">
+      <button type="button" class="btn btn--sm" :class="tab==='liquid' ? 'btn--primary' : ''"
+        @click="tab='liquid'" role="tab" :aria-selected="tab==='liquid'">Liquid only</button>
+      <button type="button" class="btn btn--sm" :class="tab==='total' ? 'btn--primary' : ''"
+        @click="tab='total'" role="tab" :aria-selected="tab==='total'">Total incl. property</button>
+    </div>
+    <div x-show="tab==='liquid'">
+      <p class="figure figure--lg" data-tick><span class="figure__cur">{{.Currency}}</span>{{amount .Liquid .Currency}}</p>
+    </div>
+    <div x-show="tab==='total'" x-cloak>
+      <p class="figure figure--lg" data-tick><span class="figure__cur">{{.Currency}}</span>{{amount .Total .Currency}}</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-block-end:1rem">
+    <div class="card" x-data="ppNetWorthCharts()" x-init="initBreakdown()">
+      <div class="card__head"><h2 class="card__title">Breakdown</h2></div>
+      <canvas x-ref="breakdown" style="max-height:220px" aria-label="Net worth breakdown by bucket" role="img"></canvas>
+      <ul style="margin-block-start:.75rem;font-size:.875rem;color:var(--color-ink-2);list-style:none;padding:0;display:grid;gap:.375rem">
+        <li style="display:flex;justify-content:space-between"><span>Liquid</span><span class="tnum">{{money .Liquid .Currency}}</span></li>
+        {{range $purpose, $amt := .ByPurpose}}
+        <li style="display:flex;justify-content:space-between;padding-inline-start:1rem;font-size:.8125rem"><span style="text-transform:capitalize">{{$purpose}}</span><span class="tnum">{{money $amt $.Currency}}</span></li>
+        {{end}}
+        <li style="display:flex;justify-content:space-between"><span>Alternative &middot; gold</span><span class="tnum">{{money .Alternative .Currency}}</span></li>
+        <li style="display:flex;justify-content:space-between"><span>Real estate &amp; other</span><span class="tnum">{{money .RealEstate .Currency}}</span></li>
+      </ul>
+    </div>
+
+    <div class="card" {{if .HasHistory}}x-data="ppNetWorthCharts()" x-init="initHistory()"{{end}}>
+      <div class="card__head"><h2 class="card__title">History</h2></div>
+      {{if .HasHistory}}
+      <canvas x-ref="history" style="max-height:220px" aria-label="Net worth over time" role="img"></canvas>
+      {{else}}
+      <p class="auth__meta">No snapshots yet &mdash; history starts today. Your current net worth is {{money .Total .Currency}}.</p>
+      {{end}}
+    </div>
+  </div>
+
+  <script type="application/json" id="nw-payload">{{json .Payload}}</script>
+
+  <div class="card">
+    <div class="card__head"><h2 class="card__title">Real estate &amp; other assets</h2></div>
+    <div class="table-scroll">
+      <table class="table">
+        <thead><tr><th>Name</th><th>Kind</th><th class="num">Value</th><th></th></tr></thead>
+        <tbody>
+          {{range .Assets}}{{template "networth-asset-row" .}}{{end}}
+          <tr>
+            <td><input class="input" name="name" placeholder="e.g. Apartment, Watch collection"></td>
+            <td>
+              <select class="select" name="kind">
+                <option value="real_estate">Real estate</option>
+                <option value="other">Other</option>
+              </select>
+            </td>
+            <td class="num">
+              <div style="display:flex;gap:.375rem;justify-content:flex-end">
+                <input class="input input--figure" name="estimated_value" placeholder="0.00" style="width:8rem">
+                <select class="select" name="currency" style="width:5.5rem">
+                  {{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}
+                </select>
+              </div>
+            </td>
+            <td>
+              <button type="button" class="btn btn--sm btn--primary" hx-post="/net-worth/assets" hx-include="closest tr"
+                hx-target="#networth-main" hx-swap="outerHTML">Add</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <span id="nw-asset-form-error"></span>
+  </div>
+</div>
+
+<script>
+function ppNetWorthCharts(){
+  return {
+    chart: null,
+    payload(){
+      const el = document.getElementById('nw-payload');
+      try { return el ? JSON.parse(el.textContent) : null; } catch(e){ return null; }
+    },
+    colors(){
+      const s = getComputedStyle(document.documentElement);
+      const v = (name) => s.getPropertyValue(name).trim();
+      return { accent: v('--color-accent'), warningSoft: v('--color-warning-soft'), warning: v('--color-warning'),
+        neutral: v('--color-muted'), rule: v('--color-rule'), ink: v('--color-ink'), surface: v('--color-surface') };
+    },
+    reduceMotion(){ return matchMedia('(prefers-reduced-motion: reduce)').matches; },
+    initBreakdown(){
+      const p = this.payload();
+      if (!p) return;
+      const c = this.colors();
+      this.chart = new Chart(this.$refs.breakdown.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Liquid', 'Alternative', 'Real estate'],
+          datasets: [{
+            data: [p.breakdown.liquid, p.breakdown.alternative, p.breakdown.realEstate],
+            backgroundColor: [c.accent, c.warning, c.neutral],
+            borderColor: c.surface, borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '68%',
+          animation: this.reduceMotion() ? false : { duration: 300, easing: 'easeOutQuad' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: { label: (item) => item.label + ': ' + (item.parsed/100).toLocaleString(undefined,{style:'currency',currency:p.currency,maximumFractionDigits:0}) },
+            },
+          },
+        },
+      });
+      window.addEventListener('pp:theme-changed', () => this.recolor());
+      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => this.recolor());
+    },
+    initHistory(){
+      const p = this.payload();
+      if (!p || !p.hasHistory) return;
+      const c = this.colors();
+      this.chart = new Chart(this.$refs.history.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: p.history.map(pt => pt.d),
+          datasets: [{
+            data: p.history.map(pt => pt.v/100),
+            borderColor: c.accent, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4,
+            tension: 0.35, cubicInterpolationMode: 'monotone', fill: false,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          animation: this.reduceMotion() ? false : { duration: 300, easing: 'easeOutQuad' },
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: c.neutral, maxTicksLimit: 6 } },
+            y: { grid: { color: c.rule }, ticks: { color: c.neutral, callback: (v) => v.toLocaleString() } },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: { mode: 'index', intersect: false },
+          },
+        },
+      });
+      window.addEventListener('pp:theme-changed', () => this.recolor());
+      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => this.recolor());
+    },
+    recolor(){
+      if (!this.chart) return;
+      const c = this.colors();
+      if (this.chart.config.type === 'doughnut') {
+        this.chart.data.datasets[0].backgroundColor = [c.accent, c.warning, c.neutral];
+        this.chart.data.datasets[0].borderColor = c.surface;
+      } else {
+        this.chart.data.datasets[0].borderColor = c.accent;
+        this.chart.options.scales.y.grid.color = c.rule;
+        this.chart.options.scales.x.ticks.color = c.neutral;
+        this.chart.options.scales.y.ticks.color = c.neutral;
+      }
+      this.chart.update('none');
+    },
+  };
+}
+</script>
+{{end}}
+
+{{template "networth-main" .}}

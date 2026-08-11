@@ -1,0 +1,14 @@
+
+{{define "content"}}
+<div id="networth-page">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-block-end:1rem">
+    <h1 style="margin:0">Net worth</h1>
+    <select class="select" style="width:auto;min-width:7rem" name="currency" aria-label="Display currency"
+      hx-get="/net-worth" hx-target="#networth-page" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change">
+      {{range .Data.Currencies}}<option value="{{.}}" {{if eq . $.Data.Currency}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </div>
+
+  {{template "networth-main" .Data}}
+</div>
+{{end}}

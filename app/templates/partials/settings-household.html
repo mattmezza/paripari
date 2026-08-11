@@ -1,0 +1,58 @@
+{{/* Household settings — split method, display currency, invite. dot: *settingsData */}}
+{{define "settings-household"}}
+<section class="card" id="settings-household" style="margin-block-end:1.5rem">
+  <div class="card__head"><span class="card__title">Household</span></div>
+
+  {{if .Notice}}<div class="flash flash--ok" style="margin-block-end:1rem"><span class="flash__mark">✓</span><span>{{.Notice}}</span></div>{{end}}
+  {{if .Err}}<p class="helper helper--error" style="margin-block-end:1rem">{{.Err}}</p>{{end}}
+
+  <form hx-post="/settings/household" hx-target="#settings-household" hx-swap="outerHTML"
+        x-data="{ method: '{{.Household.SplitMethod}}' }" style="display:grid;gap:1rem">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+    <div class="field" style="margin:0">
+      <label class="label">Split method</label>
+      <div style="display:grid;gap:.5rem">
+        <label style="display:flex;align-items:center;gap:.5rem;min-height:44px">
+          <input type="radio" name="split_method" value="fifty_fifty" x-model="method" {{if eq .Household.SplitMethod "fifty_fifty"}}checked{{end}}>
+          50 / 50 — each partner pays half of common expenses
+        </label>
+        <label style="display:flex;align-items:center;gap:.5rem;min-height:44px">
+          <input type="radio" name="split_method" value="income_weighted" x-model="method" {{if eq .Household.SplitMethod "income_weighted"}}checked{{end}}>
+          Income-weighted — proportional to net income
+        </label>
+      </div>
+    </div>
+
+    <div class="field" style="margin:0" x-show="method === 'income_weighted'" x-cloak>
+      <label style="display:flex;align-items:center;gap:.5rem;min-height:44px">
+        <input type="checkbox" name="include_variable_income" {{if .Household.IncludeVariableIncome}}checked{{end}}>
+        Include variable income (side hustles, freelance) in the ratio
+      </label>
+    </div>
+
+    <div class="field" style="margin:0">
+      <label class="label" for="display-currency">Display currency</label>
+      <select class="select" id="display-currency" name="display_currency" style="max-width:12rem">
+        {{range .Currencies}}<option value="{{.}}" {{if eq . $.Household.DisplayCurrency}}selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </div>
+
+    <button class="btn btn--primary" type="submit" style="justify-self:start">Save household settings</button>
+  </form>
+
+  <hr style="border:0;border-block-start:1px solid var(--color-rule);margin:1.25rem 0">
+
+  <div style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:center">
+    <div>
+      <span class="label">Invite code</span>
+      <p class="figure figure--sm" style="margin:.25rem 0">{{.Household.InviteCode}}</p>
+    </div>
+    <button type="button" class="btn btn--sm" data-copy="{{.Household.InviteCode}}">Copy invite code</button>
+    <span class="pill {{if eq .JoinStatus "2/2"}}pill--positive{{end}}">{{.JoinStatus}} partners joined</span>
+  </div>
+</section>
+{{end}}
+
+{{/* File-level body so view.Partial(w, "partials/settings-household", data) also works. */}}
+{{template "settings-household" .}}

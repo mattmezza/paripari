@@ -1,0 +1,34 @@
+{{define "content"}}
+{{$d := .Data}}
+<h1 style="margin-block-end:1.5rem">Settings</h1>
+
+{{template "settings-household" $d}}
+{{template "settings-data" $d}}
+
+<section class="card">
+  <div class="card__head"><span class="card__title">Account</span></div>
+
+  {{if $d.Err}}<p class="helper helper--error" style="margin-block-end:1rem">{{$d.Err}}</p>{{end}}
+
+  <form method="post" action="/settings/password" style="display:grid;gap:.75rem;max-width:24rem;margin-block-end:1.5rem">
+    <input type="hidden" name="csrf_token" value="{{$d.CSRF}}">
+    <div class="field" style="margin:0">
+      <label class="label" for="current-password">Current password</label>
+      <input class="input" id="current-password" name="current_password" type="password" required>
+    </div>
+    <div class="field" style="margin:0">
+      <label class="label" for="new-password">New password</label>
+      <input class="input" id="new-password" name="new_password" type="password" minlength="8" required>
+      <span class="helper">At least 8 characters.</span>
+    </div>
+    <button class="btn" type="submit" style="justify-self:start">Change password</button>
+  </form>
+
+  <form method="post" action="/logout">
+    <input type="hidden" name="csrf_token" value="{{$d.CSRF}}">
+    <button class="btn btn--ghost" type="submit">Log out</button>
+  </form>
+</section>
+
+{{/* Danger zone: no delete-household in v1 (see settings.go) — nothing to show here. */}}
+{{end}}

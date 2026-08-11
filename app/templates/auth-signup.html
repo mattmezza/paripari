@@ -1,0 +1,96 @@
+{{/*
+  Signup. Two paths through one form:
+    · no invite code  → you create the household and become partner one
+    · ?invite=CODE    → you join your partner's household
+
+  Alpine reads the code straight off the URL so the field needs nothing from
+  the handler. If PageData.Data ever carries the code server-side, replace the
+  x-data initialiser with the value and keep everything else.
+
+  Field names follow the foundation's auth handler: name, email, password,
+  invite, csrf_token.
+*/}}
+{{define "content"}}
+<div class="auth" x-data="{ invite: new URLSearchParams(location.search).get('invite') || '' }">
+
+  <header>
+    <a href="/" class="wordmark" aria-label="PariPari" style="font-size:1.5rem;text-decoration:none">
+      {{template "wordmark-mark"}}Pari<span class="wordmark__b">Pari</span>
+    </a>
+
+    <h1 class="auth__thesis">Household finance,<br>on equal terms.</h1>
+
+    <p class="auth__lede">
+      A household holds two accounts with identical rights — no owner, no
+      viewer. One of you starts it, the other joins with the code.
+    </p>
+
+    <hr class="auth__rule">
+    <p class="auth__meta">Open source. Self-hosted. Your numbers stay yours.</p>
+  </header>
+
+  <div class="card" style="padding:1.5rem">
+    <h2 style="font-size:1.0625rem;margin-block-end:0.375rem">
+      <span x-show="!invite">Start a household</span>
+      <span x-show="invite" x-cloak>Join the household</span>
+    </h2>
+    <p class="auth__meta" style="margin-block:0 1.25rem" x-show="invite" x-cloak>
+      You were invited. Your partner already set up the household.
+    </p>
+
+    <form method="post" action="/signup">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      {{with .Data}}{{with .Error}}<p class="helper helper--error" role="alert">{{.}}</p>{{end}}{{end}}
+
+      <div class="field">
+        <label class="label" for="name">Your name</label>
+        <input class="input" type="text" id="name" name="name"
+               autocomplete="name" placeholder="Elena"
+               required aria-required="true" aria-describedby="name-help">
+        <span class="helper" id="name-help">Shown beside your side of every split.</span>
+      </div>
+
+      <div class="field">
+        <label class="label" for="email">Email</label>
+        <input class="input" type="email" id="email" name="email"
+               autocomplete="username" inputmode="email"
+               placeholder="you@example.com"
+               required aria-required="true" aria-describedby="email-help">
+        <span class="helper" id="email-help"></span>
+      </div>
+
+      <div class="field">
+        <label class="label" for="password">Password</label>
+        <input class="input" type="password" id="password" name="password"
+               autocomplete="new-password" minlength="8"
+               required aria-required="true" aria-describedby="password-help">
+        <span class="helper" id="password-help">At least 8 characters.</span>
+      </div>
+
+      <div class="field">
+        <label class="label" for="invite">
+          Invite code <span class="label__req">— leave empty to start a new household</span>
+        </label>
+        <input class="input" type="text" id="invite" name="invite"
+               x-model="invite" autocomplete="off" spellcheck="false"
+               placeholder="XXXX-XXXX" aria-describedby="invite-help">
+        <span class="helper" id="invite-help">Your partner finds this in Settings.</span>
+      </div>
+
+      <button type="submit" class="btn btn--primary" style="width:100%">
+        <span x-show="!invite">Create household</span>
+        <span x-show="invite" x-cloak>Join household</span>
+      </button>
+    </form>
+
+    <p class="auth__meta">
+      Already set up? <a class="link" href="/login">Sign in</a>.
+    </p>
+  </div>
+
+</div>
+
+<button type="button" class="btn btn--ghost btn--sm auth__theme" data-theme-toggle aria-pressed="false">
+  {{template "nav-icon" "moon"}}<span class="sr-only">Toggle theme</span>
+</button>
+{{end}}

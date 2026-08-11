@@ -1,0 +1,41 @@
+{{/*
+  Sticky summary bar. Body dict: {S: expensesSummaryView, OOB: bool}.
+  The file-level entry point (used by view.Partial after a mutation) always
+  renders it as an out-of-band swap; the page template renders it with
+  OOB=false for the very first, non-htmx page load — an OOB swap with nothing
+  yet in the DOM to match would just be dropped by htmx.
+*/}}
+{{define "expenses-summary-body"}}
+<div id="expenses-summary" {{if .OOB}}hx-swap-oob="true"{{end}}
+  style="position:sticky;bottom:0;z-index:5;background:var(--color-surface);border-block-start:1px solid var(--color-rule);padding:.625rem .875rem;margin-inline:-1rem;display:flex;flex-wrap:wrap;gap:.75rem 1.25rem;justify-content:space-between">
+  <div>
+    <div class="label" style="margin:0">Common</div>
+    <div class="figure figure--sm tnum" data-tick>{{money .S.CommonTotalCents .S.Currency}}</div>
+  </div>
+  <div>
+    <div class="label" style="margin:0">{{.S.PartnerAName}} personal</div>
+    <div class="figure figure--sm tnum" data-tick>{{money .S.APersonalTotalCents .S.Currency}}</div>
+  </div>
+  <div>
+    <div class="label" style="margin:0">{{.S.PartnerBName}} personal</div>
+    <div class="figure figure--sm tnum" data-tick>{{money .S.BPersonalTotalCents .S.Currency}}</div>
+  </div>
+  <div>
+    <div class="label" style="margin:0">{{.S.PartnerAName}} contributes</div>
+    <div class="figure figure--sm tnum" data-tick>{{money .S.AContributionCents .S.Currency}}</div>
+  </div>
+  <div>
+    <div class="label" style="margin:0">{{.S.PartnerBName}} contributes</div>
+    <div class="figure figure--sm tnum" data-tick>{{money .S.BContributionCents .S.Currency}}</div>
+  </div>
+  <div>
+    <div class="label" style="margin:0">Available</div>
+    <div class="figure figure--sm tnum" data-tick>{{money .S.AvailableCents .S.Currency}}</div>
+  </div>
+</div>
+{{end}}
+
+{{define "expenses-summary"}}
+{{template "expenses-summary-body" (dict "S" . "OOB" true)}}
+{{end}}
+{{template "expenses-summary" .}}

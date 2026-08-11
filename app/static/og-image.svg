@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Hallmark · component: og-card · genre: modern-minimal · theme: Cobalt -->
+  <rect width="1200" height="630" fill="#f8fafc"/>
+
+  <!-- Projection field: right-biased, bleeding off the edge. Hairline grid, one
+       solid cobalt trajectory, one dashed alternative. Two lines, one accent. -->
+  <g stroke="#dee2e5" stroke-width="1">
+    <line x1="620" y1="150" x2="1200" y2="150"/>
+    <line x1="620" y1="270" x2="1200" y2="270"/>
+    <line x1="620" y1="390" x2="1200" y2="390"/>
+    <line x1="620" y1="510" x2="1200" y2="510"/>
+  </g>
+  <path d="M640 505 C 760 492, 850 452, 930 380 S 1090 208, 1200 132"
+        fill="none" stroke="#245fd4" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M640 505 C 770 500, 870 478, 950 434 S 1092 348, 1200 306"
+        fill="none" stroke="#656d73" stroke-width="2" stroke-linecap="round"
+        stroke-dasharray="7 8"/>
+  <circle cx="640" cy="505" r="5" fill="#245fd4"/>
+
+  <!-- The pari split, drawn once at the base of the field -->
+  <g>
+    <rect x="640" y="556" width="266" height="10" rx="5" fill="#245fd4"/>
+    <rect x="914" y="556" width="246" height="10" rx="5" fill="#007c84"/>
+  </g>
+
+  <!-- Mark -->
+  <g transform="translate(88,84) scale(0.1484375)">
+    <rect width="512" height="512" rx="112" fill="#e6f1ff"/>
+    <g fill="#245fd4">
+      <rect x="104" y="186" width="304" height="56" rx="28"/>
+      <rect x="104" y="270" width="304" height="56" rx="28"/>
+    </g>
+    <g fill="#e6f1ff">
+      <circle cx="132" cy="214" r="14"/>
+      <circle cx="380" cy="298" r="14"/>
+    </g>
+  </g>
+
+  <!-- Wordmark: the two "pari"s set as a pair, second one in the accent -->
+  <text x="88" y="316" font-family="Space Grotesk" font-weight="700"
+        font-size="112" letter-spacing="-5" fill="#12191f">Pari<tspan fill="#245fd4">Pari</tspan></text>
+
+  <text x="90" y="384" font-family="Inter" font-weight="400" font-size="32"
+        letter-spacing="-0.3" fill="#434c52">Household finance, on equal terms.</text>
+
+  <line x1="90" y1="440" x2="500" y2="440" stroke="#dee2e5" stroke-width="1"/>
+
+  <text x="90" y="486" font-family="Inter" font-weight="400" font-size="21"
+        fill="#656d73">Plan together. Split fairly. See it forward.</text>
+  <text x="90" y="520" font-family="Inter" font-weight="500" font-size="21"
+        fill="#656d73">paripari.app</text>
+</svg>

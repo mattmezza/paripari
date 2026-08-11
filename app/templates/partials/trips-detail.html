@@ -1,0 +1,141 @@
+{{/*
+  Trip detail panel: settings, itemized costs, funding, and the impact panel.
+  Swapped as a whole into #trip-detail-panel on every mutation.
+  Dot is *handler.tripDetailView.
+*/}}
+{{define "trips-detail"}}
+<div class="card" style="margin-block-end:1rem">
+  <form hx-post="/trips/{{.Trip.ID}}" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
+    <div class="field" style="flex:2;min-width:12rem">
+      <label class="label" for="trip-name">Name</label>
+      <input class="input" id="trip-name" name="name" value="{{.Trip.Name}}" required>
+    </div>
+    <div class="field" style="min-width:10rem">
+      <label class="label" for="trip-date">Start date</label>
+      <input class="input" id="trip-date" name="start_date" type="date" value="{{.StartDateValue}}">
+    </div>
+    <div class="field" style="min-width:8rem">
+      <label class="label" for="trip-months">Fund over (months)</label>
+      <input class="input" id="trip-months" name="months_to_save" type="number" min="1" value="{{.Trip.MonthsToSave}}">
+    </div>
+    <button class="btn btn--sm" type="submit">Save</button>
+    {{if .Trip.Committed}}
+    <span class="pill pill--positive">committed</span>
+    <button class="btn btn--sm btn--ghost" type="button" hx-post="/trips/{{.Trip.ID}}/uncommit" hx-target="#trip-detail-panel" hx-swap="innerHTML" hx-confirm="Uncommit? This removes the funding expense.">Uncommit</button>
+    {{else}}
+    <button class="btn btn--sm btn--primary" type="button" hx-post="/trips/{{.Trip.ID}}/commit" hx-target="#trip-detail-panel" hx-swap="innerHTML">Commit &amp; fund it</button>
+    {{end}}
+  </form>
+</div>
+
+{{if .Trip.Committed}}
+<div class="card" style="margin-block-end:1rem">
+  <div class="label" style="margin:0">Funded so far</div>
+  <div style="height:.5rem;border-radius:999px;background:var(--color-surface-2);overflow:hidden;margin-block:.375rem">
+    <div style="height:100%;width:{{pct .FundedRatio}};background:var(--color-positive)"></div>
+  </div>
+  <p class="auth__meta" style="margin:0">{{money .FundedSoFarCents .Currency}} of {{.TotalText}}</p>
+</div>
+{{end}}
+
+<div class="card" style="margin-block-end:1rem">
+  <div class="card__head"><h3 class="card__title">Costs</h3></div>
+  {{if .FormError}}
+  <div class="flash flash--error" style="margin-block-end:1rem"><span class="flash__mark" aria-hidden="true">⚠</span><span>{{.FormError}}</span></div>
+  {{end}}
+  {{if .Trip.Items}}
+  <div class="table-scroll" style="margin-block-end:1rem">
+    <table class="table">
+      <thead><tr><th>Item</th><th>Category</th><th class="num">Amount</th><th></th></tr></thead>
+      <tbody>
+        {{range .Trip.Items}}
+        {{$itemCat := .Category}}{{$itemCur := .Currency}}
+        <tr>
+          <td><input class="input" name="name" value="{{.Name}}" style="min-width:9rem"></td>
+          <td>
+            <select class="select" name="category">
+              {{range $.Categories}}<option value="{{.}}" {{if eq . $itemCat}}selected{{end}}>{{.}}</option>{{end}}
+            </select>
+          </td>
+          <td class="num" style="display:flex;gap:.375rem;align-items:center;justify-content:flex-end">
+            <input class="input input--figure" name="amount" inputmode="decimal" value="{{money .AmountCents .Currency}}" style="max-width:8rem">
+            <select class="select" name="currency" style="max-width:6rem">
+              {{range $.Currencies}}<option value="{{.}}" {{if eq . $itemCur}}selected{{end}}>{{.}}</option>{{end}}
+            </select>
+            <button class="btn btn--sm" type="button" hx-post="/trips/{{$.Trip.ID}}/items/{{.ID}}" hx-include="closest tr" hx-target="#trip-detail-panel" hx-swap="innerHTML">Save</button>
+          </td>
+          <td class="num"><button class="btn btn--sm btn--ghost" type="button" hx-delete="/trips/{{$.Trip.ID}}/items/{{.ID}}" hx-target="#trip-detail-panel" hx-swap="innerHTML">Remove</button></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="auth__meta" style="margin:0 0 1rem">No items yet.</p>
+  {{end}}
+
+  <form hx-post="/trips/{{.Trip.ID}}/items" hx-target="#trip-detail-panel" hx-swap="innerHTML" style="display:grid;gap:.625rem;grid-template-columns:2fr 1fr 1fr 1fr auto;align-items:flex-end">
+    <div class="field">
+      <label class="label" for="ti-name">Item</label>
+      <input class="input" id="ti-name" name="name" placeholder="Flights EU">
+    </div>
+    <div class="field">
+      <label class="label" for="ti-category">Category</label>
+      <select class="select" id="ti-category" name="category">{{range .Categories}}<option value="{{.}}">{{.}}</option>{{end}}</select>
+    </div>
+    <div class="field">
+      <label class="label" for="ti-amount">Amount</label>
+      <input class="input input--figure" id="ti-amount" name="amount" inputmode="decimal" placeholder="0.00">
+    </div>
+    <div class="field">
+      <label class="label" for="ti-currency">Currency</label>
+      <select class="select" id="ti-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
+    </div>
+    <button class="btn btn--primary" type="submit">Add</button>
+  </form>
+</div>
+
+{{if .ByCategory}}
+<div class="card" style="margin-block-end:1rem">
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Category</th><th class="num">Total</th></tr></thead>
+      <tbody>{{range .ByCategory}}<tr><td>{{.Category}}</td><td class="num">{{.Text}}</td></tr>{{end}}</tbody>
+      <tfoot><tr><td><strong>Total</strong></td><td class="num"><strong data-tick>{{.TotalText}}</strong></td></tr></tfoot>
+    </table>
+  </div>
+  <p class="auth__meta" style="margin:.75rem 0 0">Fund over {{.Trip.MonthsToSave}} month{{if ne .Trip.MonthsToSave 1}}s{{end}}: <strong data-tick>{{.MonthlyText}}</strong>/mo</p>
+</div>
+{{end}}
+
+<div class="card" x-data="ppTripChart()">
+  <div class="card__head"><h3 class="card__title">Impact — with vs without this trip</h3></div>
+  <div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-block-end:.75rem">
+    <div>
+      <div class="label" style="margin:0">Available cash impact</div>
+      <span class="pill {{if eq .AvailableDeltaTone "positive"}}pill--positive{{else if eq .AvailableDeltaTone "danger"}}pill--danger{{end}}" data-tick>{{.AvailableDeltaText}}/mo</span>
+    </div>
+  </div>
+  {{if .GoalRows}}
+  <div class="table-scroll" style="margin-block-end:.75rem">
+    <table class="table">
+      <thead><tr><th>Goal</th><th class="num">Without</th><th class="num">With</th><th class="num">Δ</th></tr></thead>
+      <tbody>
+        {{range .GoalRows}}
+        <tr>
+          <td>{{.Label}}</td>
+          <td class="num">{{.Current}}</td>
+          <td class="num">{{.ScenA}}</td>
+          <td class="num"><span class="pill {{if eq .DeltaATone "positive"}}pill--positive{{else if eq .DeltaATone "danger"}}pill--danger{{end}}" data-tick>{{.DeltaA}}</span></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+  <canvas x-ref="canvas" style="height:220px;max-height:280px" aria-label="Net worth with vs without this trip" role="img"></canvas>
+  <script type="application/json" id="trip-compare-json">{{json .Payload}}</script>
+</div>
+{{end}}
+
+{{template "trips-detail" .}}

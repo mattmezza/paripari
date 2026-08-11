@@ -1,0 +1,11 @@
+services:
+  paripari:
+    image: ghcr.io/mattmezza/paripari:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      SECURE_COOKIES: ${SECURE_COOKIES:-0}

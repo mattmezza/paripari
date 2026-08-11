@@ -1,0 +1,48 @@
+{{define "content"}}
+{{$d := .Data}}
+<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:.75rem;margin-block-end:1rem">
+  <h1 style="margin:0">Transfers</h1>
+  <form method="post" action="/transfers/confirm">
+    <input type="hidden" name="csrf_token" value="{{$d.CSRF}}">
+    <button class="btn btn--primary" type="submit">Confirm current amounts</button>
+  </form>
+</div>
+
+{{if not $d.Confirmed}}
+<div class="flash" style="margin-block-end:1.25rem">
+  <span class="flash__mark">·</span>
+  <span>These are your standing-order amounts. Set up transfers at your bank for each row below, then confirm — PariPari will flag this page whenever an expense change moves the numbers.</span>
+</div>
+{{else if $d.Changed}}
+<div class="flash" style="margin-block-end:1.25rem">
+  <span class="flash__mark">⚠</span>
+  <span>Amounts changed since you last confirmed. Update your standing orders, then confirm.</span>
+</div>
+{{end}}
+
+<div class="card">
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>From</th><th>To</th><th class="num">Amount</th><th>Reference</th></tr></thead>
+      <tbody>
+        {{range $d.Rows}}
+        <tr>
+          <td>{{.From}}</td>
+          <td>{{.To}}</td>
+          <td class="num" data-tick>
+            <span>{{money .AmountCents .Currency}}</span>
+            {{if .DeltaLabel}}<span class="pill pill--attention" style="margin-inline-start:.375rem">{{.DeltaLabel}}</span>{{end}}
+            <button type="button" class="btn btn--ghost btn--sm" data-copy="{{.AmountPlain}}" aria-label="Copy amount for {{.To}}">Copy</button>
+          </td>
+          <td>
+            {{.Reference}}
+            <button type="button" class="btn btn--ghost btn--sm" data-copy="{{if .ToIBAN}}{{.ToIBAN}}{{else}}{{.To}}{{end}}" aria-label="Copy reference for {{.To}}">Copy</button>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{if not $d.Rows}}<p class="helper">No common expenses to split yet — add some on the Expenses page.</p>{{end}}
+</div>
+{{end}}

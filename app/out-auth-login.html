@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>T — PariPari</title>
+  <meta name="description" content="D">
+  <link rel="canonical" href="https://paripari.app/login">
+  
+
+  
+  <script>
+    (function () {
+      try {
+        var c = localStorage.getItem("pp-theme");
+        var d = c ? c === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        if (d) document.documentElement.classList.add("dark");
+      } catch (e) {}
+    })();
+  </script>
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c1013" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://paripari.app/login">
+  <meta property="og:title" content="T — PariPari">
+  <meta property="og:description" content="D">
+  <meta property="og:image" content="https://paripari.app/static/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PariPari — household finance, on equal terms.">
+  <meta property="og:site_name" content="PariPari">
+  <meta property="og:locale" content="en_US">
+
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="T — PariPari">
+  <meta name="twitter:description" content="D">
+  <meta name="twitter:image" content="https://paripari.app/static/og-image.png">
+
+  
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/mark.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PariPari">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  
+  <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/app.min.css">
+
+  <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PariPari",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "description": "Household finance planning for couples — income, expenses, configurable splits, projections, and what-if scenarios.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  
+
+  
+</head>
+
+<body hx-boost="true" hx-headers='{"X-CSRF-Token": "tok"}'>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  
+    
+<div class="auth">
+
+  <header>
+    <a href="/" class="wordmark" aria-label="PariPari" style="font-size:1.5rem;text-decoration:none">
+      
+<svg class="wordmark-mark" viewBox="96 178 320 156" aria-hidden="true">
+  <mask id="pp-mark">
+    <rect x="96" y="178" width="320" height="156" fill="black"/>
+    <rect x="104" y="186" width="304" height="56" rx="28" fill="white"/>
+    <rect x="104" y="270" width="304" height="56" rx="28" fill="white"/>
+    <circle cx="132" cy="214" r="14" fill="black"/>
+    <circle cx="380" cy="298" r="14" fill="black"/>
+  </mask>
+  <rect x="96" y="178" width="320" height="156" fill="currentColor" mask="url(#pp-mark)"/>
+</svg>
+Pari<span class="wordmark__b">Pari</span>
+    </a>
+
+    <h1 class="auth__thesis">Household finance,<br>on equal terms.</h1>
+
+    <p class="auth__lede">
+      Two partners, one shared picture. Define your incomes and recurring costs;
+      PariPari works out the split, the transfers, and what the next ten years
+      look like.
+    </p>
+
+    <hr class="auth__rule">
+    <p class="auth__meta">Open source. Self-hosted. Your numbers stay yours.</p>
+  </header>
+
+  <div class="card" style="padding:1.5rem">
+    <h2 style="font-size:1.0625rem;margin-block-end:1.25rem">Sign in</h2>
+
+    <form method="post" action="/login">
+      <input type="hidden" name="csrf_token" value="tok">
+
+      <div class="field">
+        <label class="label" for="email">Email</label>
+        <input class="input" type="email" id="email" name="email"
+               autocomplete="username" inputmode="email"
+               placeholder="you@example.com"
+               required aria-required="true" aria-describedby="email-help" autofocus>
+        <span class="helper" id="email-help"></span>
+      </div>
+
+      <div class="field">
+        <label class="label" for="password">Password</label>
+        <input class="input" type="password" id="password" name="password"
+               autocomplete="current-password"
+               required aria-required="true" aria-describedby="password-help">
+        <span class="helper" id="password-help"></span>
+      </div>
+
+      <button type="submit" class="btn btn--primary" style="width:100%">Sign in</button>
+    </form>
+
+    <p class="auth__meta">
+      No household yet? <a class="link" href="/signup">Create one</a>.
+    </p>
+  </div>
+
+</div>
+
+<button type="button" class="btn btn--ghost btn--sm auth__theme" data-theme-toggle aria-pressed="false">
+  
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>
+</svg>
+<span class="sr-only">Toggle theme</span>
+</button>
+
+  
+</body>
+</html>

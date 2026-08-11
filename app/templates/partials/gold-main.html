@@ -1,0 +1,69 @@
+{{/*
+  The whole swappable gold region: spot price header, inventory table with
+  inline CRUD, and the totals footer. Any item mutation swaps this block
+  (outerHTML) — values (fine grams, totals) all live in the same section.
+
+  Dot is *handler.goldData.
+*/}}
+{{define "gold-main"}}
+<div id="gold-main">
+
+  <div class="card" style="margin-block-end:1rem">
+    <div class="card__head"><h2 class="card__title">Spot price &middot; 24K per gram</h2></div>
+    {{if .PriceErr}}
+    <p class="figure figure--lg" style="color:var(--color-muted)">&mdash;</p>
+    <div class="flash flash--error"><span class="flash__mark">&#9888;</span>
+      <span>{{.PriceErr}} <a href="/settings" style="color:inherit;text-decoration:underline">Set it in settings</a>.</span>
+    </div>
+    {{else}}
+    <p class="figure figure--lg" data-tick><span class="figure__cur">{{.Currency}}</span>{{amount .PricePerGramCents .Currency}}</p>
+    {{if .PriceAge}}<span class="helper">Updated {{date .PriceAge}}</span>{{end}}
+    {{end}}
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2 class="card__title">Inventory</h2></div>
+    <div class="table-scroll">
+      <table class="table">
+        <thead>
+          <tr><th>Name</th><th>Purity</th><th class="num">Weight (g)</th><th class="num">Qty</th><th>Location</th><th class="num">Value</th><th></th></tr>
+        </thead>
+        <tbody>
+          {{range .Items}}{{template "gold-item-row" .}}{{end}}
+          <tr>
+            <td><input class="input" name="name" placeholder="e.g. Coin, Bar"></td>
+            <td>
+              <select class="select" name="purity_karat">
+                <option value="24">24K</option>
+                <option value="22">22K</option>
+                <option value="18">18K</option>
+                <option value="14">14K</option>
+              </select>
+            </td>
+            <td class="num"><input class="input input--figure" name="weight_grams" placeholder="0.0" style="width:6rem" inputmode="decimal"></td>
+            <td class="num"><input class="input input--figure" name="quantity" value="1" style="width:4rem" inputmode="numeric"></td>
+            <td><input class="input" name="location" placeholder="e.g. Bank safe" style="width:9rem"></td>
+            <td class="num">&mdash;</td>
+            <td>
+              <button type="button" class="btn btn--sm btn--primary" hx-post="/gold/items" hx-include="closest tr"
+                hx-target="#gold-main" hx-swap="outerHTML">Add</button>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2"><strong>{{.TotalItems}} item{{if ne .TotalItems 1}}s{{end}}</strong></td>
+            <td class="num tnum">{{printf "%.2f" .TotalFineGrams}} g fine</td>
+            <td colspan="2"></td>
+            <td class="num" data-tick><span class="figure figure--sm">{{money .TotalValueCents .Currency}}</span></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <span id="gold-item-form-error"></span>
+  </div>
+</div>
+{{end}}
+
+{{template "gold-main" .}}

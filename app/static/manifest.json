@@ -1,0 +1,26 @@
+{
+  "name": "PariPari — Household Finance Planning",
+  "short_name": "PariPari",
+  "description": "Plan your household finances together, on equal terms. Income, expenses, configurable splits, projections, and what-if scenarios.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#f8fafc",
+  "categories": ["finance", "productivity", "utilities"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/icons/mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Transfers", "url": "/transfers" },
+    { "name": "Expenses", "url": "/expenses" },
+    { "name": "Projections", "url": "/projections" }
+  ]
+}

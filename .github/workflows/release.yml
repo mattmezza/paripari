@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  docker:
+    runs-on: [self-hosted]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: app
+          file: app/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/mattmezza/paripari:${{ github.event.release.tag_name }}
+            ghcr.io/mattmezza/paripari:latest

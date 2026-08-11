@@ -1,0 +1,86 @@
+{{/* Add/edit income source form. Dot: *incomeFormData. */}}
+{{define "income-form"}}
+{{$fid := printf "new-%d" .Src.UserID}}
+{{if not .IsNew}}{{$fid = printf "%d" .Src.ID}}{{end}}
+<script type="application/json" id="ded-json-{{$fid}}">{{json .Src.Deductions}}</script>
+<form id="income-{{$fid}}" class="card"
+  hx-{{if .IsNew}}post{{else}}put{{end}}="{{if .IsNew}}/income{{else}}/income/{{.Src.ID}}{{end}}"
+  hx-target="this" hx-swap="outerHTML"
+  {{/* `|| []` must come AFTER the parse: a nil Go slice serialises to `null`,
+       which is truthy as text and parses to null. */}}
+  x-data="{ deductions: JSON.parse(document.getElementById('ded-json-{{$fid}}').textContent) || [] }">
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+  <input type="hidden" name="user_id" value="{{.Src.UserID}}">
+
+  {{if .Error}}<p class="helper helper--error" style="margin-block-end:.75rem">{{.Error}}</p>{{end}}
+
+  <div class="field">
+    <label class="label" for="inc-name-{{$fid}}">Name</label>
+    <input class="input" id="inc-name-{{$fid}}" name="name" value="{{.Src.Name}}" required placeholder="e.g. Salary">
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+    <div class="field">
+      <label class="label" for="inc-kind-{{$fid}}">Type</label>
+      <select class="select" id="inc-kind-{{$fid}}" name="kind">
+        <option value="fixed" {{if ne .Src.Kind "variable"}}selected{{end}}>Fixed</option>
+        <option value="variable" {{if eq .Src.Kind "variable"}}selected{{end}}>Variable</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="label" for="inc-pay-{{$fid}}">Pay structure</label>
+      <select class="select" id="inc-pay-{{$fid}}" name="pay_structure">
+        <option value="12" {{if ne .Src.PayStructure 13}}selected{{end}}>12 payments</option>
+        <option value="13" {{if eq .Src.PayStructure 13}}selected{{end}}>13 payments</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+    <div class="field">
+      <label class="label" for="inc-gross-{{$fid}}">Gross yearly</label>
+      <input class="input input--figure" id="inc-gross-{{$fid}}" name="gross_yearly" inputmode="decimal" value="{{.GrossYearlyStr}}">
+    </div>
+    <div class="field">
+      <label class="label" for="inc-cur-{{$fid}}">Currency</label>
+      <select class="select" id="inc-cur-{{$fid}}" name="currency">
+        {{range .Currencies}}<option value="{{.}}" {{if eq . $.Src.Currency}}selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </div>
+  </div>
+
+  <div style="margin-block-start:1rem">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <label class="label" style="margin:0">Deductions</label>
+      <button type="button" class="btn btn--sm btn--ghost" @click="deductions.push({Name:'',AmountCents:0,PercentBP:0,Period:'monthly'})">+ Add deduction</button>
+    </div>
+    <template x-for="(d, i) in deductions" :key="i">
+      <div style="display:grid;grid-template-columns:1fr 6rem 6rem auto;gap:.5rem;margin-block-start:.5rem;align-items:center">
+        <input class="input" type="text" name="deduction_name[]" x-model="d.Name" placeholder="e.g. Social insurance">
+        {{/* One field, two meanings: cents for fixed amounts, basis points for
+             percentages. Both are the typed number × 100, so the handler parses
+             them identically and only the destination column differs. */}}
+        <input class="input input--figure" type="text" inputmode="decimal" name="deduction_amount[]"
+          :aria-label="d.Period === 'percent' ? 'Percent of gross' : 'Amount'"
+          :value="((d.Period === 'percent' ? d.PercentBP : d.AmountCents)/100).toFixed(2)"
+          @change="const v = Math.round(parseFloat($event.target.value.replace(',', '.')||0)*100);
+                   d.Period === 'percent' ? d.PercentBP = v : d.AmountCents = v">
+        <select class="select" name="deduction_period[]" x-model="d.Period">
+          <option value="monthly">/month</option>
+          <option value="yearly">/year</option>
+          <option value="percent">% of gross</option>
+        </select>
+        <button type="button" class="btn btn--sm btn--ghost" @click="deductions.splice(i, 1)" aria-label="Remove deduction">✕</button>
+      </div>
+    </template>
+  </div>
+
+  <div style="display:flex;gap:.5rem;margin-block-start:1.25rem">
+    <button type="submit" class="btn btn--primary">Save</button>
+    {{if not .IsNew}}
+    <button type="button" class="btn btn--ghost" hx-get="/income/{{.Src.ID}}/view" hx-target="#income-{{$fid}}" hx-swap="outerHTML">Cancel</button>
+    {{end}}
+  </div>
+</form>
+{{end}}
+{{template "income-form" .}}

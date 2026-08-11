@@ -1,0 +1,163 @@
+{{define "content"}}
+{{$d := .Data}}
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin-block-end:1rem">
+  <h1 style="margin:0">Projections</h1>
+</div>
+
+<div class="card" x-data="ppProjectionChart()">
+  <canvas x-ref="canvas" style="height:260px;max-height:320px" aria-label="Net worth projection chart" role="img"></canvas>
+
+  <form hx-get="/projections/data" hx-target="#projection-data" hx-swap="innerHTML"
+        hx-trigger="change, input delay:300ms from:#return-rate">
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-block-start:1rem" role="radiogroup" aria-label="Horizon">
+      {{$horizon := $d.HorizonYears}}
+      <label class="btn btn--sm" style="cursor:pointer"><input type="radio" name="horizon" value="1" style="accent-color:var(--color-accent);margin-inline-end:.375rem" {{if eq $horizon 1}}checked{{end}}>1y</label>
+      <label class="btn btn--sm" style="cursor:pointer"><input type="radio" name="horizon" value="5" style="accent-color:var(--color-accent);margin-inline-end:.375rem" {{if eq $horizon 5}}checked{{end}}>5y</label>
+      <label class="btn btn--sm" style="cursor:pointer"><input type="radio" name="horizon" value="10" style="accent-color:var(--color-accent);margin-inline-end:.375rem" {{if eq $horizon 10}}checked{{end}}>10y</label>
+      <label class="btn btn--sm" style="cursor:pointer"><input type="radio" name="horizon" value="20" style="accent-color:var(--color-accent);margin-inline-end:.375rem" {{if eq $horizon 20}}checked{{end}}>20y</label>
+    </div>
+
+    <div class="field" style="margin-block-start:1rem">
+      <label class="label" for="return-rate">Annual return rate</label>
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <input type="range" id="return-rate" min="0" max="0.08" step="0.005" value="{{$d.Rate}}"
+          name="rate" style="flex:1;accent-color:var(--color-accent)"
+          oninput="document.getElementById('rate-readout').textContent = (this.value*100).toFixed(1) + '%'">
+        <span class="figure figure--sm" id="rate-readout" style="min-width:4.5ch;text-align:right">{{pct $d.Rate}}</span>
+      </div>
+      <span class="helper">0% for cash, 4-7% for a diversified investment mix.</span>
+    </div>
+
+    {{if $d.Scenarios}}
+    <div style="margin-block-start:1rem">
+      <div class="label">Overlay scenarios</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.75rem">
+        {{range $d.Scenarios}}
+        <label style="display:flex;align-items:center;gap:.375rem;font-size:.875rem">
+          <input type="checkbox" name="scenario" value="{{.ID}}" style="accent-color:var(--color-accent)" {{if index $d.SelectedIDs .ID}}checked{{end}}>
+          {{.Name}}
+        </label>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+  </form>
+
+  <div id="projection-data" data-tick-on-swap>
+    {{template "projections-chart-data" $d}}
+  </div>
+</div>
+
+<script>
+function ppProjectionChart(){
+  return {
+    chart: null,
+    data: null,
+    init(){
+      this.data = this.readData();
+      const c = this.colors();
+      this.chart = new Chart(this.$refs.canvas.getContext('2d'), {
+        type: 'line',
+        data: this.buildData(c),
+        options: this.buildOptions(c),
+        plugins: [this.goalPlugin()],
+      });
+      window.addEventListener('pp:projection-updated', () => this.refresh());
+      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => this.recolor());
+      // Manual dark-mode toggle flips the `dark` class on <html>; watch it
+      // directly rather than inventing a custom event app.js doesn't fire.
+      new MutationObserver(() => this.recolor())
+        .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    },
+    readData(){
+      const el = document.getElementById('projection-json');
+      try { return el ? JSON.parse(el.textContent) : {series:[],goals:[]}; } catch(e){ return {series:[],goals:[]}; }
+    },
+    colors(){
+      const s = getComputedStyle(document.documentElement);
+      const v = (name) => s.getPropertyValue(name).trim();
+      return {
+        accent: v('--color-accent'), 'partner-b': v('--color-partner-b'),
+        positive: v('--color-positive'), warning: v('--color-warning'),
+        muted: v('--color-muted'), rule: v('--color-rule'), ink: v('--color-ink'),
+        surface: v('--color-surface'),
+      };
+    },
+    reduceMotion(){ return matchMedia('(prefers-reduced-motion: reduce)').matches; },
+    buildData(c){
+      return { datasets: this.data.series.map((s) => ({
+        label: s.name,
+        data: s.points.map(p => ({x: p.m, y: p.v/100})),
+        borderColor: c[s.color] || c.accent,
+        borderDash: s.dashed ? [6,4] : [],
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.35,
+        cubicInterpolationMode: 'monotone',
+        fill: false,
+      }))};
+    },
+    buildOptions(c){
+      const self = this;
+      return {
+        responsive: true, maintainAspectRatio: false,
+        animation: this.reduceMotion() ? false : { duration: 400, easing: 'easeOutQuad' },
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { type: 'linear', grid: { display: false },
+               ticks: { color: c.muted, stepSize: 12, maxRotation: 0,
+                        callback: (v) => v % 12 === 0 ? (v/12) + 'y' : null } },
+          y: { grid: { color: c.rule }, ticks: { color: c.muted, callback: (v) => v.toLocaleString() } },
+        },
+        plugins: {
+          legend: { display: self.data.series.length > 1, labels: { color: c.ink, boxWidth: 12 } },
+          tooltip: {
+            mode: 'index', intersect: false,
+            callbacks: {
+              title: (items) => items.length ? (items[0].parsed.x/12).toFixed(1) + ' years' : '',
+              label: (item) => item.dataset.label + ': ' + item.parsed.y.toLocaleString(undefined,{maximumFractionDigits:0}),
+            },
+          },
+        },
+      };
+    },
+    goalPlugin(){
+      const self = this;
+      return {
+        id: 'goalMarkers',
+        afterDraw(chart){
+          const c = self.colors();
+          const { ctx, chartArea, scales } = chart;
+          if (!chartArea) return;
+          (self.data.goals || []).forEach((g) => {
+            const y = scales.y.getPixelForValue(g.value/100);
+            if (y < chartArea.top || y > chartArea.bottom) return;
+            ctx.save();
+            ctx.strokeStyle = c.muted; ctx.setLineDash([2,3]); ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(chartArea.left, y); ctx.lineTo(chartArea.right, y); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = c.muted; ctx.font = '11px Inter, sans-serif'; ctx.textBaseline = 'bottom';
+            ctx.fillText(g.name, chartArea.left + 4, y - 2);
+            ctx.restore();
+          });
+        },
+      };
+    },
+    refresh(){
+      this.data = this.readData();
+      const c = this.colors();
+      this.chart.data = this.buildData(c);
+      this.chart.options.plugins.legend.display = this.data.series.length > 1;
+      this.chart.update();
+    },
+    recolor(){
+      const c = this.colors();
+      this.chart.data = this.buildData(c);
+      this.chart.options = this.buildOptions(c);
+      this.chart.update('none');
+    },
+  };
+}
+</script>
+{{end}}

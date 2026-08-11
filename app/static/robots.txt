@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /signup
+Allow: /static/
+
+Disallow: /income
+Disallow: /expenses
+Disallow: /accounts
+Disallow: /transfers
+Disallow: /net-worth
+Disallow: /gold
+Disallow: /goals
+Disallow: /scenarios
+Disallow: /trips
+Disallow: /projections
+Disallow: /settings
+
+Sitemap: https://paripari.app/sitemap.xml

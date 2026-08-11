@@ -1,0 +1,52 @@
+{{/* FX rates + gold spot price. dot: *settingsData */}}
+{{define "settings-data"}}
+<section class="card" id="settings-data" style="margin-block-end:1.5rem">
+  <div class="card__head"><span class="card__title">Market data</span></div>
+
+  {{if .Notice}}<div class="flash flash--ok" style="margin-block-end:1rem"><span class="flash__mark">✓</span><span>{{.Notice}}</span></div>{{end}}
+  {{if .Err}}<div class="flash flash--error" style="margin-block-end:1rem"><span class="flash__mark">⚠</span><span>{{.Err}}</span></div>{{end}}
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-block-end:.5rem">
+    <span class="label" style="margin:0">FX rates (base CHF)</span>
+    <button class="btn btn--sm" hx-post="/settings/fx/refresh" hx-target="#settings-data" hx-swap="outerHTML">Refresh now</button>
+  </div>
+  <div class="table-scroll" style="margin-block-end:1.5rem">
+    <table class="table">
+      <thead><tr><th>Pair</th><th class="num">Rate</th><th>Updated</th></tr></thead>
+      <tbody>
+        {{range .Rates}}
+        <tr><td>{{.Base}} / {{.Quote}}</td><td class="num tnum">{{printf "%.4f" .Rate}}</td><td>{{.Age}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{if not .Rates}}<p class="helper">No rates fetched yet.</p>{{end}}
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-block-end:.5rem">
+    <span class="label" style="margin:0">Gold spot price</span>
+    <button class="btn btn--sm" hx-post="/settings/gold/refresh" hx-target="#settings-data" hx-swap="outerHTML">Refresh now</button>
+  </div>
+  {{if .GoldPrice}}
+  <p class="helper" style="margin-block-end:.75rem">
+    {{money .GoldPrice.PricePerGramCents .GoldPrice.Currency}} / gram (24K) · fetched {{.GoldAge}}
+    {{if .Household.ManualGoldPriceCents}} · manual override active{{end}}
+  </p>
+  {{else}}
+  <p class="helper" style="margin-block-end:.75rem">Not fetched yet.</p>
+  {{end}}
+
+  <form hx-post="/settings/gold" hx-target="#settings-data" hx-swap="outerHTML" style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="field" style="margin:0">
+      <label class="label" for="gold-override">Manual override ({{.Household.DisplayCurrency}} / gram, 24K)</label>
+      <input class="input input--figure" id="gold-override" name="manual_price" inputmode="decimal"
+             placeholder="empty = use fetched price" value="{{.GoldManualInput}}" style="max-width:14rem">
+      <span class="helper">Leave empty to clear the override and use the fetched price.</span>
+    </div>
+    <button class="btn" type="submit">Save</button>
+  </form>
+</section>
+{{end}}
+
+{{/* File-level body so view.Partial(w, "partials/settings-data", data) also works. */}}
+{{template "settings-data" .}}

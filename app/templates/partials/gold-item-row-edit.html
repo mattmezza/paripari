@@ -1,0 +1,27 @@
+{{/* Edit-mode row for one gold item. Dot is handler.goldItemFormData. */}}
+{{define "gold-item-row-edit"}}
+<tr id="gold-row-{{.Item.ID}}">
+  <td><input class="input" name="name" value="{{.Item.Name}}"></td>
+  <td>
+    <select class="select" name="purity_karat">
+      <option value="24" {{if eq .Item.PurityKarat 24}}selected{{end}}>24K</option>
+      <option value="22" {{if eq .Item.PurityKarat 22}}selected{{end}}>22K</option>
+      <option value="18" {{if eq .Item.PurityKarat 18}}selected{{end}}>18K</option>
+      <option value="14" {{if eq .Item.PurityKarat 14}}selected{{end}}>14K</option>
+    </select>
+  </td>
+  <td class="num"><input class="input input--figure" name="weight_grams" value="{{printf "%.2f" .Item.WeightGrams}}" style="width:6rem" inputmode="decimal"></td>
+  <td class="num"><input class="input input--figure" name="quantity" value="{{.Item.Quantity}}" style="width:4rem" inputmode="numeric"></td>
+  <td><input class="input" name="location" value="{{.Item.Location}}" style="width:9rem"></td>
+  <td class="num">&mdash;</td>
+  <td style="white-space:nowrap">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <button type="button" class="btn btn--sm btn--primary" hx-put="/gold/items/{{.Item.ID}}" hx-include="closest tr"
+      hx-target="#gold-main" hx-swap="outerHTML">Save</button>
+    <button type="button" class="btn btn--sm btn--ghost" hx-get="/gold/items/{{.Item.ID}}"
+      hx-target="#gold-row-{{.Item.ID}}" hx-swap="outerHTML">Cancel</button>
+  </td>
+</tr>
+{{end}}
+
+{{template "gold-item-row-edit" .}}

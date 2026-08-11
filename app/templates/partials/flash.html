@@ -1,0 +1,28 @@
+{{/*
+  Flash region. Renders PageData.Flash (printed with {{.}}, so any type works).
+
+  Tone: the neutral flash is the default. For an error- or success-toned
+  message, a handler swaps this whole region out-of-band:
+
+      <div id="flash" class="pp-container" hx-swap-oob="true" role="status" aria-live="polite">
+        <div class="flash flash--error">
+          <span class="flash__mark" aria-hidden="true">⚠</span>
+          <span>Couldn't save that expense. Try again.</span>
+        </div>
+      </div>
+
+  ponytail: no tone field invented on PageData — the OOB swap already covers it.
+*/}}
+{{define "flash"}}
+<div id="flash" class="pp-container" role="status" aria-live="polite">
+  {{with .Flash}}
+  <div class="flash">
+    <span class="flash__mark" aria-hidden="true">·</span>
+    <span>{{.}}</span>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{/* File-level body so view.Partial(w, "partials/flash", pd) also works. */}}
+{{template "flash" .}}

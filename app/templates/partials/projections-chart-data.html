@@ -1,0 +1,56 @@
+{{/*
+  Chart JSON blob + summary strip for /projections. Swapped by htmx into
+  #projection-data on every horizon/rate/scenario-overlay change; the canvas
+  itself lives outside this partial so Chart.js updates in place instead of
+  being destroyed and recreated (see projections.html's Alpine component).
+
+  Dot is *handler.projectionsViewData.
+*/}}
+{{define "projections-chart-data"}}
+<script type="application/json" id="projection-json">{{json .Payload}}</script>
+
+<div class="pp-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-block-start:1rem" data-tick-on-swap>
+  <div class="card" style="padding:.875rem">
+    <div class="label" style="margin:0">Value at {{.HorizonYears}}y</div>
+    <p class="figure figure--sm tnum" data-tick style="overflow-wrap:anywhere">{{money .ValueAtHorizonCents .Currency}}</p>
+  </div>
+  <div class="card" style="padding:.875rem">
+    <div class="label" style="margin:0">Total contributed</div>
+    <p class="figure figure--sm tnum" data-tick style="overflow-wrap:anywhere">{{money .ContributedCents .Currency}}</p>
+  </div>
+  <div class="card" style="padding:.875rem">
+    <div class="label" style="margin:0">Growth earned</div>
+    <p class="figure figure--sm tnum" data-tick style="overflow-wrap:anywhere">{{money .GrowthCents .Currency}}</p>
+  </div>
+  <div class="card" style="padding:.875rem">
+    <div class="label" style="margin:0">Monthly surplus</div>
+    <p class="figure figure--sm tnum" data-tick style="overflow-wrap:anywhere">{{money .SurplusCents .Currency}}</p>
+  </div>
+</div>
+
+{{if .Goals}}
+<div class="card" style="margin-block-start:.75rem">
+  <div class="card__head"><h3 class="card__title">Goal ETA at {{pct .Rate}} return</h3></div>
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Goal</th><th class="num">Target</th><th class="num">ETA</th></tr></thead>
+      <tbody>
+        {{range .Goals}}
+        <tr>
+          <td>{{.Goal.Name}}</td>
+          <td class="num">{{money .TargetCents .Goal.Currency}}</td>
+          <td class="num">
+            {{if .ReachedAlready}}<span class="pill pill--positive">Reached</span>
+            {{else if lt .ETAMonths 0}}<span class="pill pill--danger">Unreachable</span>
+            {{else}}{{.ETAMonths}} mo{{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+{{end}}
+
+{{template "projections-chart-data" .}}

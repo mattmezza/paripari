@@ -1,0 +1,26 @@
+{{/*
+  Per-partner net-monthly summary strip. Body dict: {S: *incomeData, OOB: bool}.
+  view.Partial (after a mutation) always renders it out-of-band; income.html
+  renders the body directly with OOB=false for the first, non-htmx page load.
+*/}}
+{{define "income-summary-body"}}
+<div id="income-summary" {{if .OOB}}hx-swap-oob="true"{{end}} class="card">
+  <div class="split-legend">
+    <div>
+      <div class="split-legend__name"><span class="split-legend__dot split-legend__dot--a"></span>{{.S.A.User.Name}}</div>
+      <div class="figure figure--sm tnum" data-tick>{{money .S.A.TotalNetMonthlyCents .S.A.DisplayCurrency}}</div>
+    </div>
+    {{if .S.HasPartner}}
+    <div>
+      <div class="split-legend__name"><span class="split-legend__dot split-legend__dot--b"></span>{{.S.B.User.Name}}</div>
+      <div class="figure figure--sm tnum" data-tick>{{money .S.B.TotalNetMonthlyCents .S.B.DisplayCurrency}}</div>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{define "income-summary"}}
+{{template "income-summary-body" (dict "S" . "OOB" true)}}
+{{end}}
+{{template "income-summary" .}}

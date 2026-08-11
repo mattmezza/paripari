@@ -1,0 +1,48 @@
+{{/* One income source card. Dot: incomeSourceView{Src, Calc}. */}}
+{{define "income-card"}}
+<div id="income-{{.Src.ID}}" class="card">
+  <div class="card__head">
+    <div>
+      <div class="card__title">{{.Src.Name}}</div>
+      <span class="pill{{if eq .Src.Kind "variable"}} pill--accent{{end}}" style="margin-block-start:.375rem">{{.Src.Kind}}</span>
+    </div>
+    <div style="display:flex;gap:.375rem">
+      <button type="button" class="btn btn--sm btn--ghost"
+        hx-get="/income/{{.Src.ID}}/edit" hx-target="#income-{{.Src.ID}}" hx-swap="outerHTML">Edit</button>
+      <button type="button" class="btn btn--sm btn--danger"
+        hx-delete="/income/{{.Src.ID}}" hx-target="#income-{{.Src.ID}}" hx-swap="outerHTML"
+        hx-confirm="Delete {{.Src.Name}}?">Delete</button>
+    </div>
+  </div>
+
+  <dl style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1rem;margin-block:.75rem">
+    <div><dt class="label" style="margin:0">Gross yearly</dt><dd class="tnum" style="margin:.125rem 0 0">{{money .Src.GrossYearlyCents .Src.Currency}}</dd></div>
+    <div><dt class="label" style="margin:0">Pay structure</dt><dd style="margin:.125rem 0 0">{{.Src.PayStructure}} payments · {{.Src.Currency}}</dd></div>
+  </dl>
+
+  {{if .Src.Deductions}}
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Deduction</th><th class="num">Amount</th><th class="num">Per year</th></tr></thead>
+      <tbody>
+        {{$cur := .Src.Currency}}
+        {{$gross := .Src.GrossYearlyCents}}
+        {{range .Src.Deductions}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td class="num tnum">
+            {{if eq .Period "percent"}}{{pct100 .PercentBP}} of gross
+            {{else}}{{money .AmountCents $cur}} /{{if eq .Period "monthly"}}mo{{else}}yr{{end}}{{end}}
+          </td>
+          <td class="num tnum">{{money (dedYearly . $gross) $cur}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+
+  <p class="figure figure--lg tnum" data-tick style="margin-block-start:.75rem">{{money .Calc.NetMonthlyCents .Src.Currency}}<span class="auth__meta" style="display:block;font-size:.75rem;margin-block-start:.125rem">net monthly</span></p>
+</div>
+{{end}}
+{{template "income-card" .}}

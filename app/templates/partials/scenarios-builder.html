@@ -1,0 +1,194 @@
+{{/*
+  Scenario builder: name, the change stack, and the add-change form. Swapped
+  as a whole into #scenario-builder-panel whenever a change is added/removed
+  or the name is saved — each mutation is persisted immediately (POST/DELETE)
+  so the scenario survives a reload.
+
+  Dot is *handler.scenarioDetailView.
+*/}}
+{{define "scenarios-builder"}}
+<div class="card" style="margin-block-end:1rem">
+  <form hx-post="/scenarios/{{.Scenario.ID}}" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
+    <div class="field" style="flex:1;min-width:12rem">
+      <label class="label" for="scenario-name">Name</label>
+      <input class="input" id="scenario-name" name="name" value="{{.Scenario.Name}}" required>
+    </div>
+    <div class="field" style="flex:2;min-width:16rem">
+      <label class="label" for="scenario-desc">Description</label>
+      <input class="input" id="scenario-desc" name="description" value="{{.Scenario.Description}}" placeholder="optional">
+    </div>
+    <button class="btn btn--sm" type="submit">Save</button>
+  </form>
+</div>
+
+<div class="card" style="margin-block-end:1rem">
+  <div class="card__head"><h3 class="card__title">Changes</h3></div>
+  {{if not .ChangeRows}}
+  <p class="auth__meta" style="margin:0 0 1rem">No changes yet — add one below.</p>
+  {{else}}
+  <div class="table-scroll" style="margin-block-end:1rem">
+    <table class="table">
+      <thead><tr><th>Change</th><th></th></tr></thead>
+      <tbody>
+        {{range .ChangeRows}}
+        <tr>
+          <td>{{.Description}}</td>
+          <td class="num"><button class="btn btn--sm btn--ghost" hx-delete="/scenarios/{{.ScenarioID}}/changes/{{.ID}}" hx-target="#scenario-builder-panel" hx-swap="innerHTML">Remove</button></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+
+  {{if .FormError}}
+  <div class="flash flash--error" style="margin-block-end:1rem"><span class="flash__mark" aria-hidden="true">⚠</span><span>{{.FormError}}</span></div>
+  {{end}}
+
+  <form hx-post="/scenarios/{{.Scenario.ID}}/changes" hx-target="#scenario-builder-panel" hx-swap="innerHTML"
+        x-data="{type:'expense_amount'}" style="display:grid;gap:.75rem">
+    <div class="field">
+      <label class="label" for="change_type">Change type</label>
+      <select class="select" id="change_type" name="change_type" x-model="type">
+        <option value="expense_amount">Change an expense amount</option>
+        <option value="expense_add">Add a new expense</option>
+        <option value="expense_remove">Remove an expense</option>
+        <option value="income_amount">Change an income amount</option>
+        <option value="income_add">Add a new income</option>
+        <option value="income_remove">Remove an income</option>
+        <option value="return_rate">Change the return rate</option>
+        <option value="asset_add">Add an asset</option>
+        <option value="asset_remove">Remove an asset</option>
+      </select>
+    </div>
+
+    <div x-show="type === 'expense_amount'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr">
+      <div class="field">
+        <label class="label" for="target_expense">Expense</label>
+        <select class="select" id="target_expense" name="target_expense">
+          {{range .Expenses}}<option value="{{.ID}}">{{.Name}} ({{money .AmountCents .Currency}})</option>{{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="ea-amount">New amount</label>
+        <input class="input input--figure" id="ea-amount" name="amount" inputmode="decimal" placeholder="0.00">
+      </div>
+    </div>
+
+    <div x-show="type === 'expense_add'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr 1fr">
+      <div class="field">
+        <label class="label" for="exa-label">Name</label>
+        <input class="input" id="exa-label" name="label" placeholder="New car lease">
+      </div>
+      <div class="field">
+        <label class="label" for="exa-amount">Monthly amount</label>
+        <input class="input input--figure" id="exa-amount" name="amount" inputmode="decimal" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label class="label" for="exa-currency">Currency</label>
+        <select class="select" id="exa-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
+      </div>
+      <div class="field">
+        <label class="label" for="exa-subcategory">Subcategory</label>
+        <input class="input" id="exa-subcategory" name="subcategory" placeholder="e.g. transport, savings">
+      </div>
+      <div class="field">
+        <label class="label" for="exa-target">Who pays</label>
+        <select class="select" id="exa-target" name="target_user">
+          <option value="">Common (split)</option>
+          <option value="{{.PartnerA.ID}}">{{.PartnerA.Name}} (personal)</option>
+          {{if .PartnerB.ID}}<option value="{{.PartnerB.ID}}">{{.PartnerB.Name}} (personal)</option>{{end}}
+        </select>
+      </div>
+    </div>
+
+    <div x-show="type === 'expense_remove'" class="field">
+      <label class="label" for="target_expense_rm">Expense</label>
+      <select class="select" id="target_expense_rm" name="target_expense">
+        {{range .Expenses}}<option value="{{.ID}}">{{.Name}} ({{money .AmountCents .Currency}})</option>{{end}}
+      </select>
+    </div>
+
+    <div x-show="type === 'income_amount'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr">
+      <div class="field">
+        <label class="label" for="target_income">Income source</label>
+        <select class="select" id="target_income" name="target_income">
+          {{range .Incomes}}<option value="{{.ID}}">{{.Name}} ({{money .GrossYearlyCents .Currency}}/yr)</option>{{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="ia-amount">New gross yearly</label>
+        <input class="input input--figure" id="ia-amount" name="amount" inputmode="decimal" placeholder="0.00">
+      </div>
+    </div>
+
+    <div x-show="type === 'income_add'" style="display:grid;gap:.75rem;grid-template-columns:1fr 2fr 1fr 1fr 1fr">
+      <div class="field">
+        <label class="label" for="ina-target">Partner</label>
+        <select class="select" id="ina-target" name="target_user">
+          <option value="{{.PartnerA.ID}}">{{.PartnerA.Name}}</option>
+          {{if .PartnerB.ID}}<option value="{{.PartnerB.ID}}">{{.PartnerB.Name}}</option>{{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="ina-label">Name</label>
+        <input class="input" id="ina-label" name="label" placeholder="Freelance work">
+      </div>
+      <div class="field">
+        <label class="label" for="ina-amount">Gross yearly</label>
+        <input class="input input--figure" id="ina-amount" name="amount" inputmode="decimal" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label class="label" for="ina-currency">Currency</label>
+        <select class="select" id="ina-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
+      </div>
+      <div class="field">
+        <label class="label" for="ina-kind">Kind</label>
+        <select class="select" id="ina-kind" name="kind"><option value="fixed">Fixed</option><option value="variable">Variable</option></select>
+      </div>
+    </div>
+
+    <div x-show="type === 'income_remove'" class="field">
+      <label class="label" for="target_income_rm">Income source</label>
+      <select class="select" id="target_income_rm" name="target_income">
+        {{range .Incomes}}<option value="{{.ID}}">{{.Name}} ({{money .GrossYearlyCents .Currency}}/yr)</option>{{end}}
+      </select>
+    </div>
+
+    <div x-show="type === 'return_rate'" class="field">
+      <label class="label" for="rate_pct">New annual return rate (%)</label>
+      <input class="input" id="rate_pct" name="rate_pct" type="number" min="0" max="20" step="0.5" placeholder="5">
+    </div>
+
+    <div x-show="type === 'asset_add'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr 1fr">
+      <div class="field">
+        <label class="label" for="asa-label">Name</label>
+        <input class="input" id="asa-label" name="label" placeholder="Rental property">
+      </div>
+      <div class="field">
+        <label class="label" for="asa-amount">Estimated value</label>
+        <input class="input input--figure" id="asa-amount" name="amount" inputmode="decimal" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label class="label" for="asa-currency">Currency</label>
+        <select class="select" id="asa-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
+      </div>
+    </div>
+
+    <div x-show="type === 'asset_remove'" class="field">
+      <label class="label" for="target_asset_rm">Asset</label>
+      <select class="select" id="target_asset_rm" name="target_asset">
+        {{range .Assets}}<option value="{{.ID}}">{{.Name}} ({{money .EstimatedValueCents .Currency}})</option>{{end}}
+      </select>
+    </div>
+
+    <button class="btn btn--primary" type="submit" style="justify-self:start">Add change</button>
+  </form>
+</div>
+
+<div id="scenario-compare">
+  {{template "scenarios-compare" .Compare}}
+</div>
+{{end}}
+
+{{template "scenarios-builder" .}}

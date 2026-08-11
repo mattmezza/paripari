@@ -1,0 +1,63 @@
+{{define "content"}}
+{{$d := .Data}}
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;margin-block-end:1rem">
+  <div>
+    <a class="link" href="/trips">&larr; Trips</a>
+    <h1 style="margin:.25rem 0 0">{{$d.Trip.Name}}</h1>
+  </div>
+  <button class="btn btn--danger btn--sm" hx-delete="/trips/{{$d.Trip.ID}}" hx-confirm="Delete this trip?">Delete</button>
+</div>
+
+<div id="trip-detail-panel">
+  {{template "trips-detail" $d}}
+</div>
+
+<script>
+// Defined once at page load so it's ready before x-init runs on the swapped
+// impact-panel chart (see partials/trips-detail.html).
+function ppTripChart(){
+  return {
+    chart: null,
+    init(){
+      const el = document.getElementById('trip-compare-json');
+      let data = {series:[]};
+      try { data = el ? JSON.parse(el.textContent) : data; } catch(e){}
+      const s = getComputedStyle(document.documentElement);
+      const v = (n) => s.getPropertyValue(n).trim();
+      const colors = { accent: v('--color-accent'), 'partner-b': v('--color-partner-b'), muted: v('--color-muted'), rule: v('--color-rule'), ink: v('--color-ink') };
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.chart = new Chart(this.$refs.canvas.getContext('2d'), {
+        type: 'line',
+        data: { datasets: data.series.map((ser) => ({
+          label: ser.name,
+          data: ser.points.map(p => ({x: p.m, y: p.v/100})),
+          borderColor: colors[ser.color] || colors.accent,
+          borderDash: ser.dashed ? [6,4] : [],
+          borderWidth: 2, pointRadius: 0, pointHoverRadius: 4,
+          tension: 0.35, cubicInterpolationMode: 'monotone', fill: false,
+        }))},
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          animation: reduceMotion ? false : { duration: 400, easing: 'easeOutQuad' },
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: { type: 'linear', grid: { display: false }, ticks: { color: colors.muted, stepSize: 12, maxRotation: 0, callback: (x) => x % 12 === 0 ? (x/12)+'y' : null } },
+            y: { grid: { color: colors.rule }, ticks: { color: colors.muted, callback: (y) => y.toLocaleString() } },
+          },
+          plugins: {
+            legend: { display: true, labels: { color: colors.ink, boxWidth: 12 } },
+            tooltip: {
+              mode: 'index', intersect: false,
+              callbacks: {
+                title: (items) => items.length ? (items[0].parsed.x/12).toFixed(1)+' years' : '',
+                label: (item) => item.dataset.label + ': ' + item.parsed.y.toLocaleString(undefined,{maximumFractionDigits:0}),
+              },
+            },
+          },
+        },
+      });
+    },
+  };
+}
+</script>
+{{end}}

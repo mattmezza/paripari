@@ -1,0 +1,70 @@
+{{/*
+  Credit-card discipline card — one designated cc_buffer account.
+  dot: dict "Row" ccRow "CSRF" string
+*/}}
+{{define "cc-card"}}
+{{$row := .Row}}{{$acc := $row.Account}}{{$csrf := .CSRF}}
+<section class="card" style="margin-block-end:1.5rem;border-color:var(--color-accent)">
+  <div class="card__head">
+    <span class="card__title">Credit card buffer · {{$acc.Name}}</span>
+    <span class="pill pill--accent">Cashback {{money $row.CashbackTotalCents $acc.Currency}}</span>
+  </div>
+  <p class="figure figure--lg" data-tick>{{money $acc.BalanceCents $acc.Currency}}</p>
+  <p class="helper" style="margin-block-end:1rem">Buffer balance — should always cover the upcoming bill.</p>
+
+  <div style="display:flex;flex-wrap:wrap;gap:.625rem;margin-block-end:1rem">
+    <details style="flex:1 1 14rem">
+      <summary class="btn btn--primary" style="width:100%">Record CC spend</summary>
+      <form hx-post="/accounts/cc/{{$acc.ID}}/spend" hx-target="#accounts-body" hx-swap="outerHTML"
+            style="margin-block-start:.75rem;display:grid;gap:.25rem">
+        <input type="hidden" name="csrf_token" value="{{$csrf}}">
+        <div class="field">
+          <label class="label" for="ccspend-desc-{{$acc.ID}}">Description</label>
+          <input class="input" id="ccspend-desc-{{$acc.ID}}" name="description" required>
+        </div>
+        <div class="field">
+          <label class="label" for="ccspend-amt-{{$acc.ID}}">Amount ({{$acc.Currency}})</label>
+          <input class="input input--figure" id="ccspend-amt-{{$acc.ID}}" name="amount" inputmode="decimal" placeholder="0.00" required>
+        </div>
+        <div class="field">
+          <label class="label" for="ccspend-cb-{{$acc.ID}}">Cashback <span class="label__req">optional</span></label>
+          <input class="input input--figure" id="ccspend-cb-{{$acc.ID}}" name="cashback" inputmode="decimal" placeholder="0.00">
+        </div>
+        <button class="btn btn--primary" type="submit">Add spend &amp; set aside</button>
+      </form>
+    </details>
+    <details style="flex:1 1 14rem">
+      <summary class="btn" style="width:100%">Bill paid</summary>
+      <form hx-post="/accounts/cc/{{$acc.ID}}/bill-paid" hx-target="#accounts-body" hx-swap="outerHTML"
+            style="margin-block-start:.75rem;display:grid;gap:.25rem">
+        <input type="hidden" name="csrf_token" value="{{$csrf}}">
+        <div class="field">
+          <label class="label" for="ccbill-amt-{{$acc.ID}}">Amount paid ({{$acc.Currency}})</label>
+          <input class="input input--figure" id="ccbill-amt-{{$acc.ID}}" name="amount" inputmode="decimal" placeholder="0.00" required>
+        </div>
+        <button class="btn" type="submit">Clear from buffer</button>
+      </form>
+    </details>
+  </div>
+
+  {{if $row.Transactions}}
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Description</th><th class="num">Amount</th><th class="num">Cashback</th></tr></thead>
+      <tbody>
+        {{range $row.Transactions}}
+        <tr>
+          <td>{{date .CreatedAt}}</td>
+          <td>{{.Description}}</td>
+          <td class="num">{{money .AmountCents .Currency}}</td>
+          <td class="num">{{money .CashbackCents .Currency}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="helper">No spend recorded yet.</p>
+  {{end}}
+</section>
+{{end}}

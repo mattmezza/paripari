@@ -1,0 +1,16 @@
+{{/* View-mode row for one manually-valued asset. Dot is handler.nwAssetRow. */}}
+{{define "networth-asset-row"}}
+<tr id="asset-row-{{.Asset.ID}}">
+  <td>{{.Asset.Name}}</td>
+  <td>{{if eq .Asset.Kind "real_estate"}}Real estate{{else}}Other{{end}}</td>
+  <td class="num" data-tick>{{money .ValueCents .Asset.Currency}}</td>
+  <td style="white-space:nowrap">
+    <button type="button" class="btn btn--sm btn--ghost" hx-get="/net-worth/assets/{{.Asset.ID}}/edit"
+      hx-target="#asset-row-{{.Asset.ID}}" hx-swap="outerHTML">Edit</button>
+    <button type="button" class="btn btn--sm btn--danger" hx-delete="/net-worth/assets/{{.Asset.ID}}"
+      hx-target="#networth-main" hx-swap="outerHTML" hx-confirm="Delete {{.Asset.Name}}?">Delete</button>
+  </td>
+</tr>
+{{end}}
+
+{{template "networth-asset-row" .}}

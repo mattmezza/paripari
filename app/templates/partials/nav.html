@@ -1,0 +1,126 @@
+{{/*
+  Navigation — owned by the design agent.
+
+  Defines:
+    "nav-icon"  — one icon set, one stroke voice. Takes a name string.
+    "sidebar"   — desktop left rail (md: and up). Every section.
+    "tabbar"    — mobile bottom bar. 5 items; "More" opens the sheet.
+    "more-sheet"— native <dialog> holding the sections the tab bar can't.
+
+  All three take PageData (needs .Path and .TransfersChanged).
+*/}}
+
+{{define "wordmark-mark"}}
+<svg class="wordmark-mark" viewBox="96 178 320 156" aria-hidden="true">
+  <mask id="pp-mark">
+    <rect x="96" y="178" width="320" height="156" fill="black"/>
+    <rect x="104" y="186" width="304" height="56" rx="28" fill="white"/>
+    <rect x="104" y="270" width="304" height="56" rx="28" fill="white"/>
+    <circle cx="132" cy="214" r="14" fill="black"/>
+    <circle cx="380" cy="298" r="14" fill="black"/>
+  </mask>
+  <rect x="96" y="178" width="320" height="156" fill="currentColor" mask="url(#pp-mark)"/>
+</svg>
+{{end}}
+
+{{define "nav-icon"}}
+<svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  {{- if eq . "home"}}<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/>
+  {{- else if eq . "expenses"}}<path d="M5 3h14v18l-2.5-1.6L14 21l-2-1.6L10 21l-2.5-1.6L5 21z"/><path d="M9 8h6M9 12h6"/>
+  {{- else if eq . "transfers"}}<path d="M4 8h13M13 4l4 4-4 4"/><path d="M20 16H7M11 20l-4-4 4-4"/>
+  {{- else if eq . "projections"}}<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>
+  {{- else if eq . "more"}}<path d="M4 12h.01M12 12h.01M20 12h.01" stroke-width="2.5"/>
+  {{- else if eq . "income"}}<path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7V6a2 2 0 0 1 2-2h11"/><path d="M16 13h2"/>
+  {{- else if eq . "accounts"}}<path d="M3 10 12 4l9 6"/><path d="M5.5 10.5v9M18.5 10.5v9M10 10.5v9M14 10.5v9"/><path d="M3 20h18"/>
+  {{- else if eq . "net-worth"}}<path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/>
+  {{- else if eq . "gold"}}<path d="M4 15h6.5v5H4zM13.5 15H20v5h-6.5zM8.5 9.5h7v5h-7z"/>
+  {{- else if eq . "goals"}}<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>
+  {{- else if eq . "scenarios"}}<path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
+  {{- else if eq . "trips"}}<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>
+  {{- else if eq . "settings"}}<path d="M4 7h9M17.5 7H20M4 17h3.5M12 17h8"/><circle cx="15" cy="7" r="2.2"/><circle cx="9.5" cy="17" r="2.2"/>
+  {{- else if eq . "close"}}<path d="M6 6l12 12M18 6 6 18"/>
+  {{- else if eq . "sun"}}<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+  {{- else if eq . "moon"}}<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>
+  {{- end}}
+</svg>
+{{end}}
+
+
+{{define "sidebar"}}
+<nav class="sidebar" aria-label="Sections">
+  <a href="/" class="wordmark" aria-label="PariPari — dashboard"
+     style="font-size:1.25rem;padding:.25rem .75rem 1rem;text-decoration:none">
+    {{template "wordmark-mark"}}Pari<span class="wordmark__b">Pari</span>
+  </a>
+
+  <a href="/"            class="nav__link" {{if eq .Path "/"}}aria-current="page"{{end}}>{{template "nav-icon" "home"}}Dashboard</a>
+  <a href="/income"      class="nav__link" {{if eq .Path "/income"}}aria-current="page"{{end}}>{{template "nav-icon" "income"}}Income</a>
+  <a href="/expenses"    class="nav__link" {{if eq .Path "/expenses"}}aria-current="page"{{end}}>{{template "nav-icon" "expenses"}}Expenses</a>
+  <a href="/accounts"    class="nav__link" {{if eq .Path "/accounts"}}aria-current="page"{{end}}>{{template "nav-icon" "accounts"}}Accounts</a>
+  <a href="/transfers"   class="nav__link" {{if eq .Path "/transfers"}}aria-current="page"{{end}}>
+    {{template "nav-icon" "transfers"}}Transfers
+    {{if .TransfersChanged}}<span class="pill pill--attention" style="margin-inline-start:auto"><span class="pill__dot"></span>New</span>{{end}}
+  </a>
+  <a href="/projections" class="nav__link" {{if eq .Path "/projections"}}aria-current="page"{{end}}>{{template "nav-icon" "projections"}}Projections</a>
+  <a href="/scenarios"   class="nav__link" {{if eq .Path "/scenarios"}}aria-current="page"{{end}}>{{template "nav-icon" "scenarios"}}Scenarios</a>
+  <a href="/goals"       class="nav__link" {{if eq .Path "/goals"}}aria-current="page"{{end}}>{{template "nav-icon" "goals"}}Goals</a>
+  <a href="/net-worth"   class="nav__link" {{if eq .Path "/net-worth"}}aria-current="page"{{end}}>{{template "nav-icon" "net-worth"}}Net worth</a>
+  <a href="/gold"        class="nav__link" {{if eq .Path "/gold"}}aria-current="page"{{end}}>{{template "nav-icon" "gold"}}Gold</a>
+  <a href="/trips"       class="nav__link" {{if eq .Path "/trips"}}aria-current="page"{{end}}>{{template "nav-icon" "trips"}}Trips</a>
+
+  <div style="margin-block-start:auto;padding-block-start:1rem">
+    <a href="/settings" class="nav__link" {{if eq .Path "/settings"}}aria-current="page"{{end}}>{{template "nav-icon" "settings"}}Settings</a>
+    <button type="button" class="nav__link" data-theme-toggle aria-pressed="false" style="width:100%;background:none;border:0;cursor:pointer;text-align:start">
+      {{template "nav-icon" "moon"}}<span>Theme</span>
+    </button>
+  </div>
+</nav>
+{{end}}
+
+
+{{define "tabbar"}}
+<nav class="tabbar" aria-label="Sections">
+  <a href="/" class="tabbar__item" {{if eq .Path "/"}}aria-current="page"{{end}}>
+    {{template "nav-icon" "home"}}<span>Home</span>
+  </a>
+  <a href="/expenses" class="tabbar__item" {{if eq .Path "/expenses"}}aria-current="page"{{end}}>
+    {{template "nav-icon" "expenses"}}<span>Expenses</span>
+  </a>
+  <a href="/transfers" class="tabbar__item" style="position:relative" {{if eq .Path "/transfers"}}aria-current="page"{{end}}>
+    {{template "nav-icon" "transfers"}}<span>Transfers</span>
+    {{if .TransfersChanged}}<span class="tabbar__badge"></span><span class="sr-only">Transfer amounts changed</span>{{end}}
+  </a>
+  <a href="/projections" class="tabbar__item" {{if eq .Path "/projections"}}aria-current="page"{{end}}>
+    {{template "nav-icon" "projections"}}<span>Forecast</span>
+  </a>
+  <button type="button" class="tabbar__item" data-sheet-open="more-sheet" aria-haspopup="dialog">
+    {{template "nav-icon" "more"}}<span>More</span>
+  </button>
+</nav>
+{{end}}
+
+
+{{define "more-sheet"}}
+<dialog class="sheet" id="more-sheet" aria-label="More sections">
+  <div class="sheet__grip"></div>
+  <div class="sheet__body">
+    <a href="/income"    class="nav__link">{{template "nav-icon" "income"}}Income</a>
+    <a href="/accounts"  class="nav__link">{{template "nav-icon" "accounts"}}Accounts</a>
+    <a href="/scenarios" class="nav__link">{{template "nav-icon" "scenarios"}}Scenarios</a>
+    <a href="/goals"     class="nav__link">{{template "nav-icon" "goals"}}Goals</a>
+    <a href="/net-worth" class="nav__link">{{template "nav-icon" "net-worth"}}Net worth</a>
+    <a href="/gold"      class="nav__link">{{template "nav-icon" "gold"}}Gold</a>
+    <a href="/trips"     class="nav__link">{{template "nav-icon" "trips"}}Trips</a>
+    <a href="/settings"  class="nav__link">{{template "nav-icon" "settings"}}Settings</a>
+    <button type="button" class="nav__link" data-theme-toggle aria-pressed="false"
+            style="background:none;border:0;cursor:pointer;text-align:start;width:100%">
+      {{template "nav-icon" "moon"}}<span>Theme</span>
+    </button>
+    <button type="button" class="nav__link" data-sheet-close
+            style="background:none;border:0;cursor:pointer;text-align:start;width:100%">
+      {{template "nav-icon" "close"}}<span>Close</span>
+    </button>
+  </div>
+</dialog>
+{{end}}

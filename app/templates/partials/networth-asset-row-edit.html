@@ -1,0 +1,29 @@
+{{/* Edit-mode row for one asset. Dot is handler.nwAssetFormData. */}}
+{{define "networth-asset-row-edit"}}
+<tr id="asset-row-{{.Asset.ID}}">
+  <td><input class="input" name="name" value="{{.Asset.Name}}"></td>
+  <td>
+    <select class="select" name="kind">
+      <option value="real_estate" {{if eq .Asset.Kind "real_estate"}}selected{{end}}>Real estate</option>
+      <option value="other" {{if eq .Asset.Kind "other"}}selected{{end}}>Other</option>
+    </select>
+  </td>
+  <td class="num">
+    <div style="display:flex;gap:.375rem;justify-content:flex-end">
+      <input class="input input--figure" name="estimated_value" value="{{.AmountStr}}" style="width:8rem">
+      <select class="select" name="currency" style="width:5.5rem">
+        {{$cur := .Asset.Currency}}{{range .Currencies}}<option value="{{.}}" {{if eq . $cur}}selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </div>
+  </td>
+  <td style="white-space:nowrap">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <button type="button" class="btn btn--sm btn--primary" hx-put="/net-worth/assets/{{.Asset.ID}}" hx-include="closest tr"
+      hx-target="#networth-main" hx-swap="outerHTML">Save</button>
+    <button type="button" class="btn btn--sm btn--ghost" hx-get="/net-worth/assets/{{.Asset.ID}}"
+      hx-target="#asset-row-{{.Asset.ID}}" hx-swap="outerHTML">Cancel</button>
+  </td>
+</tr>
+{{end}}
+
+{{template "networth-asset-row-edit" .}}

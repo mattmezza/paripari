@@ -1,0 +1,10 @@
+{{/* The "add income source" trigger card. Dot: the partner's user id (int64). */}}
+{{define "income-new-trigger"}}
+<div id="income-new-{{.}}" class="card" style="text-align:center;border-style:dashed">
+  <button type="button" class="btn btn--ghost" style="width:100%"
+    hx-get="/income/new?user_id={{.}}" hx-target="this" hx-swap="outerHTML">
+    + Add income source
+  </button>
+</div>
+{{end}}
+{{template "income-new-trigger" .}}

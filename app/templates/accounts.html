@@ -1,0 +1,8 @@
+{{define "content"}}
+{{$d := .Data}}
+<h1 style="margin-block-end:1rem">Accounts</h1>
+<p class="helper" style="margin-block-end:1.5rem">
+  Purpose-dedicated containers — checking, savings, investment, budget envelopes, and the credit-card buffer.
+</p>
+{{template "accounts-body" $d}}
+{{end}}

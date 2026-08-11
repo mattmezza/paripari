@@ -1,0 +1,66 @@
+{{/*
+  Login — the public face. Rendered by base.html's $public branch, so this
+  template owns the whole page body (no app shell).
+
+  Form field names follow the foundation's auth handler: email, password,
+  csrf_token. If those differ, change the name attributes only — the markup
+  and classes stay.
+*/}}
+{{define "content"}}
+<div class="auth">
+
+  <header>
+    <a href="/" class="wordmark" aria-label="PariPari" style="font-size:1.5rem;text-decoration:none">
+      {{template "wordmark-mark"}}Pari<span class="wordmark__b">Pari</span>
+    </a>
+
+    <h1 class="auth__thesis">Household finance,<br>on equal terms.</h1>
+
+    <p class="auth__lede">
+      Two partners, one shared picture. Define your incomes and recurring costs;
+      PariPari works out the split, the transfers, and what the next ten years
+      look like.
+    </p>
+
+    <hr class="auth__rule">
+    <p class="auth__meta">Open source. Self-hosted. Your numbers stay yours.</p>
+  </header>
+
+  <div class="card" style="padding:1.5rem">
+    <h2 style="font-size:1.0625rem;margin-block-end:1.25rem">Sign in</h2>
+
+    <form method="post" action="/login">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      {{with .Data}}{{with .Error}}<p class="helper helper--error" role="alert">{{.}}</p>{{end}}{{end}}
+
+      <div class="field">
+        <label class="label" for="email">Email</label>
+        <input class="input" type="email" id="email" name="email"
+               autocomplete="username" inputmode="email"
+               placeholder="you@example.com"
+               required aria-required="true" aria-describedby="email-help" autofocus>
+        <span class="helper" id="email-help"></span>
+      </div>
+
+      <div class="field">
+        <label class="label" for="password">Password</label>
+        <input class="input" type="password" id="password" name="password"
+               autocomplete="current-password"
+               required aria-required="true" aria-describedby="password-help">
+        <span class="helper" id="password-help"></span>
+      </div>
+
+      <button type="submit" class="btn btn--primary" style="width:100%">Sign in</button>
+    </form>
+
+    <p class="auth__meta">
+      No household yet? <a class="link" href="/signup">Create one</a>.
+    </p>
+  </div>
+
+</div>
+
+<button type="button" class="btn btn--ghost btn--sm auth__theme" data-theme-toggle aria-pressed="false">
+  {{template "nav-icon" "moon"}}<span class="sr-only">Toggle theme</span>
+</button>
+{{end}}

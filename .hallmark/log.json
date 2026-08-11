@@ -1,0 +1,33 @@
+{
+  "entries": [
+    {
+      "date": "2026-08-10",
+      "component": "app-shell",
+      "verb": "greenfield",
+      "genre": "modern-minimal",
+      "theme": "Cobalt (custom-tuned)",
+      "macrostructure": "Workbench",
+      "nav": "N-appshell (bottom tab bar + desktop rail)",
+      "footer": "none (application shell)",
+      "enrichment": "Tier A — CSS/SVG only",
+      "states": "full",
+      "fonts": { "display": "Space Grotesk 500/700", "body": "Inter 400/500/600" },
+      "accent": "oklch(52% 0.19 262)",
+      "files": [
+        "app/static/css/app.css",
+        "app/static/css/app.min.css",
+        "app/static/js/app.js",
+        "app/static/sw.js",
+        "app/static/manifest.json",
+        "app/static/og-image.png",
+        "app/templates/layouts/base.html",
+        "app/templates/partials/nav.html",
+        "app/templates/partials/flash.html",
+        "app/templates/auth-login.html",
+        "app/templates/auth-signup.html",
+        "app/templates/styleguide.html"
+      ],
+      "notes": "Locked design system from docs/CONVENTIONS.md. Single cobalt accent; partner A/B tint pair confined to split bars and charts. Eyebrows off, no italic headings, no fake chrome, no invented metrics, no emoji in UI. Verified: light + dark at 320/375/414/768/1280, no horizontal overflow, all eight control states, focus rings instant at 2px/3:1."
+    }
+  ]
+}

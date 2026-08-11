@@ -1,0 +1,19 @@
+{{/* View-mode row for one gold item. Dot is handler.goldItemRow. */}}
+{{define "gold-item-row"}}
+<tr id="gold-row-{{.ID}}">
+  <td>{{.Name}}</td>
+  <td><span class="pill pill--accent">{{.PurityKarat}}K</span></td>
+  <td class="num tnum">{{printf "%.2f" .WeightGrams}}</td>
+  <td class="num tnum">{{.Quantity}}</td>
+  <td>{{.Location}}</td>
+  <td class="num" data-tick>{{money .ValueCents .Currency}}</td>
+  <td style="white-space:nowrap">
+    <button type="button" class="btn btn--sm btn--ghost" hx-get="/gold/items/{{.ID}}/edit"
+      hx-target="#gold-row-{{.ID}}" hx-swap="outerHTML">Edit</button>
+    <button type="button" class="btn btn--sm btn--danger" hx-delete="/gold/items/{{.ID}}"
+      hx-target="#gold-main" hx-swap="outerHTML" hx-confirm="Delete {{.Name}}?">Delete</button>
+  </td>
+</tr>
+{{end}}
+
+{{template "gold-item-row" .}}

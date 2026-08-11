@@ -1,0 +1,13 @@
+{{define "content"}}
+{{$list := .Data.List}}
+<h1 style="margin-block-end:.75rem">Expenses</h1>
+
+<div style="display:flex;gap:.5rem;margin-block-end:1rem" role="tablist" aria-label="Filter expenses">
+  <a href="/expenses" class="btn btn--sm {{if eq $list.Filter "all"}}btn--primary{{end}}">All</a>
+  <a href="/expenses?filter=common" class="btn btn--sm {{if eq $list.Filter "common"}}btn--primary{{end}}">Common</a>
+  <a href="/expenses?filter=personal" class="btn btn--sm {{if eq $list.Filter "personal"}}btn--primary{{end}}">Personal</a>
+</div>
+
+{{template "expenses-list" $list}}
+{{template "expenses-summary-body" (dict "S" .Data.Summary "OOB" false)}}
+{{end}}

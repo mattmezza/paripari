@@ -1,0 +1,97 @@
+{{/*
+  The payoff: Current vs Scenario (optionally vs a second Scenario B) across
+  cash flow, split, transfers, goal ETAs and net worth, plus the overlay
+  chart. Dot is handler.compareView.
+*/}}
+{{define "scenarios-compare"}}
+<div class="card" style="margin-block-end:1rem" x-data="ppScenarioChart()">
+  <div class="card__head" style="flex-wrap:wrap;gap:.5rem">
+    <h3 class="card__title">Current vs {{.Scenario.Name}}{{if .ScenarioB}} vs {{.ScenarioB.Name}}{{end}}</h3>
+    {{if .OtherScens}}
+    <select class="select" style="max-width:14rem" hx-get="/scenarios/{{.Scenario.ID}}/compare" hx-target="#scenario-compare" hx-swap="innerHTML" name="b">
+      <option value="">— vs current only —</option>
+      {{$sb := .SelectedB}}
+      {{range .OtherScens}}<option value="{{.ID}}" {{if eq $sb .ID}}selected{{end}}>also vs {{.Name}}</option>{{end}}
+    </select>
+    {{end}}
+  </div>
+  <canvas x-ref="canvas" style="height:260px;max-height:320px" aria-label="Current vs scenario net worth" role="img"></canvas>
+</div>
+
+<div class="table-scroll" style="margin-block-end:1rem">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Metric</th><th class="num">Current</th><th class="num">{{.Scenario.Name}}</th><th class="num">Δ</th>
+        {{if .ScenarioB}}<th class="num">{{.ScenarioB.Name}}</th><th class="num">Δ</th>{{end}}
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Rows}}
+      <tr>
+        <td>{{.Label}}</td>
+        <td class="num" data-tick>{{.Current}}</td>
+        <td class="num" data-tick>{{.ScenA}}</td>
+        <td class="num"><span class="pill {{if eq .DeltaATone "positive"}}pill--positive{{else if eq .DeltaATone "danger"}}pill--danger{{end}}" data-tick>{{.DeltaA}}</span></td>
+        {{if $.ScenarioB}}
+        <td class="num" data-tick>{{.ScenB}}</td>
+        <td class="num"><span class="pill {{if eq .DeltaBTone "positive"}}pill--positive{{else if eq .DeltaBTone "danger"}}pill--danger{{end}}" data-tick>{{.DeltaB}}</span></td>
+        {{end}}
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+{{if .GoalRows}}
+<div class="card" style="margin-block-end:1rem">
+  <div class="card__head"><h3 class="card__title">Goal ETA</h3></div>
+  <div class="table-scroll">
+    <table class="table">
+      <thead>
+        <tr><th>Goal</th><th class="num">Current</th><th class="num">{{.Scenario.Name}}</th><th class="num">Δ</th>{{if .ScenarioB}}<th class="num">{{.ScenarioB.Name}}</th><th class="num">Δ</th>{{end}}</tr>
+      </thead>
+      <tbody>
+        {{range .GoalRows}}
+        <tr>
+          <td>{{.Label}}</td>
+          <td class="num">{{.Current}}</td>
+          <td class="num">{{.ScenA}}</td>
+          <td class="num"><span class="pill {{if eq .DeltaATone "positive"}}pill--positive{{else if eq .DeltaATone "danger"}}pill--danger{{end}}" data-tick>{{.DeltaA}}</span></td>
+          {{if $.ScenarioB}}
+          <td class="num">{{.ScenB}}</td>
+          <td class="num"><span class="pill {{if eq .DeltaBTone "positive"}}pill--positive{{else if eq .DeltaBTone "danger"}}pill--danger{{end}}" data-tick>{{.DeltaB}}</span></td>
+          {{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+
+{{if .TransferRows}}
+<div class="card">
+  <div class="card__head"><h3 class="card__title">Transfer changes</h3></div>
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Transfer</th><th class="num">Current</th><th class="num">{{.Scenario.Name}}</th><th class="num">Δ</th></tr></thead>
+      <tbody>
+        {{range .TransferRows}}
+        <tr>
+          <td>{{.Label}}</td>
+          <td class="num">{{.Current}}</td>
+          <td class="num">{{.ScenA}}</td>
+          <td class="num"><span class="pill {{if eq .DeltaATone "positive"}}pill--positive{{else if eq .DeltaATone "danger"}}pill--danger{{end}}" data-tick>{{.DeltaA}}</span></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+
+<script type="application/json" id="scenario-compare-json">{{json .Payload}}</script>
+{{end}}
+
+{{template "scenarios-compare" .}}

@@ -1,0 +1,32 @@
+{{/* One goal card. Dot is handler.goalCard. */}}
+{{define "goals-card"}}
+<div class="card" id="goal-card-{{.Goal.ID}}">
+  <div class="card__head">
+    <h3 class="card__title">{{.Goal.Name}}</h3>
+    <span class="pill">{{.CategoryLabel}}</span>
+  </div>
+
+  <div style="height:.5rem;border-radius:999px;background:var(--color-surface-2);overflow:hidden;margin-block-end:.5rem" role="progressbar" aria-valuenow="{{.PercentInt}}" aria-valuemin="0" aria-valuemax="100">
+    <div data-tick style="height:100%;width:{{pct .Ratio}};background:var(--color-accent);transition:width var(--dur-long) var(--ease-out)"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:.875rem;color:var(--color-ink-2);margin-block-end:.75rem">
+    <span class="tnum" data-tick>{{money .CurrentCents .Goal.Currency}}</span>
+    <span class="tnum">{{pct .Ratio}} of {{money .TargetCents .Goal.Currency}}</span>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;margin-block-end:.75rem">
+    {{if .StatusPill}}<span class="pill pill--{{.StatusPill}}">{{.StatusText}}</span>{{end}}
+    {{if .ETAText}}<span class="pill">ETA {{.ETAText}}</span>{{end}}
+    {{if .DeadlineDate}}<span class="pill">Due {{date .DeadlineDate}}</span>{{end}}
+  </div>
+
+  <div style="display:flex;gap:.5rem">
+    <button type="button" class="btn btn--sm btn--ghost" hx-get="/goals/{{.Goal.ID}}/edit"
+      hx-target="#goal-card-{{.Goal.ID}}" hx-swap="outerHTML">Edit</button>
+    <button type="button" class="btn btn--sm btn--danger" hx-delete="/goals/{{.Goal.ID}}"
+      hx-target="#goals-grid" hx-swap="outerHTML" hx-confirm="Delete {{.Goal.Name}}?">Delete</button>
+  </div>
+</div>
+{{end}}
+
+{{template "goals-card" .}}

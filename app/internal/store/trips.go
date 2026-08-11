@@ -1,0 +1,101 @@
+package store
+
+import "github.com/mattmezza/paripari/internal/model"
+
+const tripCols = `id, household_id, name, start_date, months_to_save, committed, created_at`
+
+func (s *Store) CreateTrip(t *model.TripPlan) (int64, error) {
+	res, err := s.DB.Exec(`INSERT INTO trip_plans (household_id, name, start_date, months_to_save, committed, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)`, t.HouseholdID, t.Name, t.StartDate, t.MonthsToSave, t.Committed, now())
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+func (s *Store) UpdateTrip(t *model.TripPlan) error {
+	_, err := s.DB.Exec(`UPDATE trip_plans SET name = ?, start_date = ?, months_to_save = ?, committed = ?
+		WHERE id = ? AND household_id = ?`, t.Name, t.StartDate, t.MonthsToSave, t.Committed, t.ID, t.HouseholdID)
+	return err
+}
+
+func (s *Store) DeleteTrip(householdID, id int64) error {
+	_, err := s.DB.Exec(`DELETE FROM trip_plans WHERE id = ? AND household_id = ?`, id, householdID)
+	return err
+}
+
+func (s *Store) Trip(householdID, id int64) (*model.TripPlan, error) {
+	var t model.TripPlan
+	err := s.DB.QueryRow(`SELECT `+tripCols+` FROM trip_plans WHERE id = ? AND household_id = ?`, id, householdID).
+		Scan(&t.ID, &t.HouseholdID, &t.Name, &t.StartDate, &t.MonthsToSave, &t.Committed, &t.CreatedAt)
+	if err != nil {
+		return nil, mapNoRows(err)
+	}
+	t.Items, err = s.TripItems(t.ID)
+	return &t, err
+}
+
+// Trips returns all trip plans of a household with their items loaded.
+func (s *Store) Trips(householdID int64) ([]model.TripPlan, error) {
+	rows, err := s.DB.Query(`SELECT `+tripCols+` FROM trip_plans WHERE household_id = ? ORDER BY start_date IS NULL, start_date, name`, householdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.TripPlan
+	for rows.Next() {
+		var t model.TripPlan
+		if err := rows.Scan(&t.ID, &t.HouseholdID, &t.Name, &t.StartDate, &t.MonthsToSave,
+			&t.Committed, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range out {
+		if out[i].Items, err = s.TripItems(out[i].ID); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) TripItems(tripID int64) ([]model.TripItem, error) {
+	rows, err := s.DB.Query(`SELECT id, trip_plan_id, name, category, amount_cents, currency
+		FROM trip_items WHERE trip_plan_id = ? ORDER BY id`, tripID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.TripItem
+	for rows.Next() {
+		var it model.TripItem
+		if err := rows.Scan(&it.ID, &it.TripPlanID, &it.Name, &it.Category, &it.AmountCents, &it.Currency); err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) CreateTripItem(it *model.TripItem) (int64, error) {
+	res, err := s.DB.Exec(`INSERT INTO trip_items (trip_plan_id, name, category, amount_cents, currency)
+		VALUES (?, ?, ?, ?, ?)`, it.TripPlanID, it.Name, it.Category, it.AmountCents, it.Currency)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+func (s *Store) UpdateTripItem(it *model.TripItem) error {
+	_, err := s.DB.Exec(`UPDATE trip_items SET name = ?, category = ?, amount_cents = ?, currency = ? WHERE id = ?`,
+		it.Name, it.Category, it.AmountCents, it.Currency, it.ID)
+	return err
+}
+
+func (s *Store) DeleteTripItem(id int64) error {
+	_, err := s.DB.Exec(`DELETE FROM trip_items WHERE id = ?`, id)
+	return err
+}

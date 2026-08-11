@@ -1,0 +1,135 @@
+{{/*
+  ─── RENDER CONTRACT ────────────────────────────────────────────────────────
+
+  This file defines the template "base". Execute it for a full page:
+
+      tmpl.ExecuteTemplate(w, "base", pageData)
+
+  Every page template supplies its body by defining "content":
+
+      {{define "content"}} … {{end}}
+
+  base.html declares it as {{block "content" .}}, so a page that forgets to
+  define one still renders (empty main) instead of erroring. Parse base.html
+  FIRST, then the page file, so the page's definition wins.
+
+  Optional blocks a page may override:
+      "head-extra"  — extra <head> tags (preloads, page-scoped JSON-LD)
+      "page-nav"    — a right-side action row rendered in the page header slot
+
+  Dot is view.PageData: Title, Description, Path, BaseURL, CanonicalURL, User,
+  Partner, Household, DisplayCurrency, Currencies, CSRF, Flash,
+  TransfersChanged, Data.
+
+  Public pages (no app shell, JSON-LD emitted, indexable) are detected from
+  .Path — /login and /signup.
+  ────────────────────────────────────────────────────────────────────────────
+*/}}
+{{define "base"}}
+{{- $public := or (eq .Path "/login") (eq .Path "/signup") -}}
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Primary Meta Tags -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{{.Title}} — PariPari</title>
+  <meta name="description" content="{{.Description}}">
+  <link rel="canonical" href="{{.CanonicalURL}}">
+  {{if not $public}}<meta name="robots" content="noindex, nofollow">{{end}}
+
+  <!-- Paint the correct theme before first paint. Must stay blocking and inline. -->
+  <script>
+    (function () {
+      try {
+        var c = localStorage.getItem("pp-theme");
+        var d = c ? c === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        if (d) document.documentElement.classList.add("dark");
+      } catch (e) {}
+    })();
+  </script>
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c1013" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{.CanonicalURL}}">
+  <meta property="og:title" content="{{.Title}} — PariPari">
+  <meta property="og:description" content="{{.Description}}">
+  <meta property="og:image" content="{{.BaseURL}}/static/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PariPari — household finance, on equal terms.">
+  <meta property="og:site_name" content="PariPari">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{.Title}} — PariPari">
+  <meta name="twitter:description" content="{{.Description}}">
+  <meta name="twitter:image" content="{{.BaseURL}}/static/og-image.png">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/mark.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PariPari">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Styles and fonts -->
+  <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/app.min.css">
+
+  <script src="/static/js/htmx.min.js" defer></script>
+  <!-- Chart.js before Alpine: hx-boost swaps only <body>, so per-page head
+       scripts never load on client-side navigation — every page gets it. -->
+  <script src="/static/js/chart.umd.js" defer></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+
+  {{if $public}}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PariPari",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "description": "Household finance planning for couples — income, expenses, configurable splits, projections, and what-if scenarios.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  {{end}}
+
+  {{block "head-extra" .}}{{end}}
+</head>
+
+<body hx-boost="true" hx-headers='{"X-CSRF-Token": "{{.CSRF}}"}'>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  {{if $public}}
+    {{block "content" .}}{{end}}
+  {{else}}
+  <div class="shell">
+    {{template "sidebar" .}}
+
+    <main id="main" class="shell__main">
+      {{template "flash" .}}
+      <div class="pp-container">
+        {{block "content" .}}{{end}}
+      </div>
+    </main>
+  </div>
+
+  {{template "tabbar" .}}
+  {{template "more-sheet" .}}
+  {{end}}
+</body>
+</html>
+{{end}}

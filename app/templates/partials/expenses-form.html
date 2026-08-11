@@ -1,0 +1,66 @@
+{{/* Add/edit expense form. Dot: *expenseFormData. */}}
+{{define "expenses-form"}}
+{{$fid := "new"}}{{if not .IsNew}}{{$fid = printf "%d" .Exp.ID}}{{end}}
+<form id="expenses-form-{{$fid}}" class="card"
+  hx-{{if .IsNew}}post{{else}}put{{end}}="{{if .IsNew}}/expenses{{else}}/expenses/{{.Exp.ID}}{{end}}"
+  hx-target="#expenses-list" hx-swap="outerHTML">
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+  {{if .Error}}<p class="helper helper--error" style="margin-block-end:.75rem">{{.Error}}</p>{{end}}
+
+  <div class="field">
+    <label class="label" for="exp-name-{{$fid}}">Name</label>
+    <input class="input" id="exp-name-{{$fid}}" name="name" value="{{.Exp.Name}}" required placeholder="e.g. Rent">
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+    <div class="field">
+      <label class="label" for="exp-amount-{{$fid}}">Amount</label>
+      <input class="input input--figure" id="exp-amount-{{$fid}}" name="amount" inputmode="decimal" value="{{.AmountStr}}">
+    </div>
+    <div class="field">
+      <label class="label" for="exp-cur-{{$fid}}">Currency</label>
+      <select class="select" id="exp-cur-{{$fid}}" name="currency">
+        {{range .Currencies}}<option value="{{.}}" {{if eq . $.Exp.Currency}}selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+    <div class="field">
+      <label class="label" for="exp-cat-{{$fid}}">Category</label>
+      <select class="select" id="exp-cat-{{$fid}}" name="category" x-data x-on:change="$el.closest('form').querySelector('[data-owner-field]').style.display = $el.value === 'personal' ? '' : 'none'">
+        <option value="common" {{if ne .Exp.Category "personal"}}selected{{end}}>Common</option>
+        <option value="personal" {{if eq .Exp.Category "personal"}}selected{{end}}>Personal</option>
+      </select>
+    </div>
+    <div class="field" data-owner-field style="{{if ne .Exp.Category "personal"}}display:none{{end}}">
+      <label class="label" for="exp-owner-{{$fid}}">Belongs to</label>
+      <select class="select" id="exp-owner-{{$fid}}" name="user_id">
+        <option value="{{.PartnerAID}}" {{if not .OwnerIsB}}selected{{end}}>{{.PartnerAName}}</option>
+        {{if .HasPartner}}<option value="{{.PartnerBID}}" {{if .OwnerIsB}}selected{{end}}>{{.PartnerBName}}</option>{{end}}
+      </select>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+    <div class="field">
+      <label class="label" for="exp-subcat-{{$fid}}">Subcategory</label>
+      <input class="input" id="exp-subcat-{{$fid}}" name="subcategory" value="{{.Exp.Subcategory}}" placeholder="e.g. rent, groceries, subscriptions" list="exp-subcats">
+    </div>
+    <div class="field">
+      <label class="label" for="exp-savings-{{$fid}}">Tag</label>
+      <select class="select" id="exp-savings-{{$fid}}" name="is_savings">
+        <option value="false" {{if not .Exp.IsSavings}}selected{{end}}>Regular expense</option>
+        <option value="true" {{if .Exp.IsSavings}}selected{{end}}>Savings</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.5rem;margin-block-start:1.25rem">
+    <button type="submit" class="btn btn--primary">Save</button>
+    <button type="button" class="btn btn--ghost" hx-get="/expenses" hx-target="#expenses-list" hx-select="#expenses-list" hx-swap="outerHTML">Cancel</button>
+  </div>
+</form>
+{{end}}
+{{template "expenses-form" .}}

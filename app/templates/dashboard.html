@@ -1,0 +1,125 @@
+{{define "content"}}
+{{if not .Data}}
+<h1>Dashboard</h1>
+{{else}}
+{{$d := .Data}}
+{{$ov := $d.Overview}}
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-block-end:1rem">
+  <h1 style="margin:0">Dashboard</h1>
+  {{if $d.TransfersChanged}}
+  <a href="/transfers" class="pill pill--attention"><span class="pill__dot"></span>Transfers changed</a>
+  {{end}}
+</div>
+
+{{if $d.Empty}}
+<div class="card">
+  <p class="card__title" style="margin-block-end:.25rem">Let's set up your household</p>
+  <p class="auth__meta" style="margin-block-end:1rem">Three steps and your monthly picture will fill in automatically.</p>
+  <ol style="display:grid;gap:.75rem;list-style:none;margin:0;padding:0">
+    <li class="card" style="display:flex;align-items:center;justify-content:space-between">
+      <span>1. Add your income sources</span>
+      <a href="/income" class="btn btn--sm btn--primary">Add income</a>
+    </li>
+    <li class="card" style="display:flex;align-items:center;justify-content:space-between">
+      <span>2. Add your recurring expenses</span>
+      <a href="/expenses" class="btn btn--sm btn--primary">Add expenses</a>
+    </li>
+    <li class="card" style="display:flex;align-items:center;justify-content:space-between">
+      <span>3. Check the transfer amounts</span>
+      <a href="/transfers" class="btn btn--sm">View transfers</a>
+    </li>
+  </ol>
+</div>
+{{else}}
+
+<div style="display:flex;flex-wrap:wrap;gap:1rem">
+  <div class="card" style="flex:1 1 300px;min-width:0">
+    <div class="card__title">{{$ov.A.Name}}</div>
+    <dl style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 1rem;margin-block-start:.75rem">
+      <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.NetIncomeCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Personal expenses</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.PersonalExpensesCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.CommonShareCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.AvailableCents $ov.Currency}}</dd></div>
+    </dl>
+  </div>
+
+  <div class="card" style="flex:1 1 300px;min-width:0">
+    <div class="card__title">{{if $d.HasPartner}}{{$ov.B.Name}}{{else}}Partner{{end}}</div>
+    {{if $d.HasPartner}}
+    <dl style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 1rem;margin-block-start:.75rem">
+      <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.NetIncomeCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Personal expenses</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.PersonalExpensesCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.CommonShareCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.AvailableCents $ov.Currency}}</dd></div>
+    </dl>
+    {{else}}
+    <p class="auth__meta" style="margin-block-start:.75rem">Invite your partner from Settings to see their side of the picture.</p>
+    {{end}}
+  </div>
+</div>
+
+<div class="card" style="margin-block-start:1rem">
+  <div class="card__title">Household this month</div>
+  <dl style="display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem 1rem;margin-block-start:.75rem">
+    <div><dt class="label" style="margin:0">Total income</dt><dd class="figure tnum" data-tick style="margin:.125rem 0 0">{{money $ov.TotalIncomeCents $ov.Currency}}</dd></div>
+    <div><dt class="label" style="margin:0">Total expenses</dt><dd class="figure tnum" data-tick style="margin:.125rem 0 0">{{money $ov.TotalExpensesCents $ov.Currency}}</dd></div>
+    <div><dt class="label" style="margin:0">Savings</dt><dd class="figure tnum" data-tick style="margin:.125rem 0 0">{{money $ov.TotalSavingsCents $ov.Currency}}</dd></div>
+    <div><dt class="label" style="margin:0">Surplus</dt><dd class="figure tnum" data-tick style="margin:.125rem 0 0">{{money $ov.SurplusCents $ov.Currency}}</dd></div>
+  </dl>
+</div>
+
+{{if $d.HasPartner}}
+<div class="card" style="margin-block-start:1rem">
+  <div class="card__title">Contribution split · {{if eq $ov.Ratio.Method "income_weighted"}}income-weighted{{else}}50/50{{end}}</div>
+  <div class="split" style="--a:{{printf "%.4f" $ov.Ratio.A}}fr;--b:{{printf "%.4f" $ov.Ratio.B}}fr;margin-block-start:.75rem">
+    <span class="split__a"></span><span class="split__b"></span>
+  </div>
+  <div class="split-legend">
+    <div>
+      <div class="split-legend__name"><span class="split-legend__dot split-legend__dot--a"></span>{{$ov.A.Name}}</div>
+      <div class="figure figure--sm tnum">{{pct $ov.Ratio.A}}</div>
+    </div>
+    <div>
+      <div class="split-legend__name"><span class="split-legend__dot split-legend__dot--b"></span>{{$ov.B.Name}}</div>
+      <div class="figure figure--sm tnum">{{pct $ov.Ratio.B}}</div>
+    </div>
+  </div>
+</div>
+{{end}}
+
+<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-block-start:1rem">
+  <div class="card" style="flex:1 1 240px;min-width:0">
+    <div class="card__title">Net worth</div>
+    <dl style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 1rem;margin-block-start:.75rem">
+      <div><dt class="label" style="margin:0">Liquid</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.NetWorth.LiquidCents $d.NetWorth.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Total</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.NetWorth.TotalCents $d.NetWorth.Currency}}</dd></div>
+    </dl>
+    <a href="/net-worth" class="link" style="display:inline-block;margin-block-start:.75rem;font-size:.875rem">See the breakdown →</a>
+  </div>
+
+  <div class="card" style="flex:2 1 300px;min-width:0">
+    <div class="card__title">Goals</div>
+    {{if $d.Goals}}
+    <div style="display:grid;gap:.875rem;margin-block-start:.75rem">
+      {{range $d.Goals}}
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:.875rem;margin-block-end:.25rem">
+          <span>{{.Goal.Name}}</span>
+          <span class="tnum">{{money .CurrentCents .Goal.Currency}} / {{money .TargetCents .Goal.Currency}}</span>
+        </div>
+        <div style="height:8px;border-radius:4px;background:var(--color-rule);overflow:hidden">
+          <div style="height:100%;width:{{pct .Ratio}};background:var(--color-positive)"></div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="auth__meta" style="margin-block-start:.75rem">No goals yet. <a href="/goals" class="link">Add one</a> to track progress here.</p>
+    {{end}}
+  </div>
+</div>
+
+{{end}}
+{{end}}
+{{end}}

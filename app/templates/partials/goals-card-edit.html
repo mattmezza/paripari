@@ -1,0 +1,49 @@
+{{/* Edit-mode card for one goal. Dot is handler.goalFormData. Save/Cancel target the whole grid since editing a goal changes its position in progress order elsewhere too. */}}
+{{define "goals-card-edit"}}
+<div class="card" id="goal-card-{{.Goal.ID}}">
+  <div class="field">
+    <label class="label" for="goal-edit-name-{{.Goal.ID}}">Name</label>
+    <input class="input" id="goal-edit-name-{{.Goal.ID}}" name="name" value="{{.Goal.Name}}">
+  </div>
+  <div class="field" style="display:flex;gap:.5rem">
+    <div style="flex:1">
+      <label class="label" for="goal-edit-target-{{.Goal.ID}}">Target</label>
+      <input class="input input--figure" id="goal-edit-target-{{.Goal.ID}}" name="target_amount" value="{{.TargetAmountStr}}">
+    </div>
+    <div style="width:6rem">
+      <label class="label" for="goal-edit-currency-{{.Goal.ID}}">Currency</label>
+      <select class="select" id="goal-edit-currency-{{.Goal.ID}}" name="currency">
+        {{$cur := .Goal.Currency}}
+        <option value="CHF" {{if eq $cur "CHF"}}selected{{end}}>CHF</option>
+        <option value="EUR" {{if eq $cur "EUR"}}selected{{end}}>EUR</option>
+        <option value="USD" {{if eq $cur "USD"}}selected{{end}}>USD</option>
+        <option value="GBP" {{if eq $cur "GBP"}}selected{{end}}>GBP</option>
+        <option value="TRY" {{if eq $cur "TRY"}}selected{{end}}>TRY</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label" for="goal-edit-category-{{.Goal.ID}}">Category</label>
+    <select class="select" id="goal-edit-category-{{.Goal.ID}}" name="category">
+      <option value="safety_net" {{if eq .Goal.Category "safety_net"}}selected{{end}}>Safety net</option>
+      <option value="property" {{if eq .Goal.Category "property"}}selected{{end}}>Property</option>
+      <option value="education" {{if eq .Goal.Category "education"}}selected{{end}}>Education</option>
+      <option value="other" {{if eq .Goal.Category "other"}}selected{{end}}>Other</option>
+    </select>
+  </div>
+  <div class="field" style="margin-block-end:.5rem">
+    <label class="label" for="goal-edit-deadline-{{.Goal.ID}}">Deadline <span class="label__req">(optional)</span></label>
+    <input class="input" type="date" id="goal-edit-deadline-{{.Goal.ID}}" name="deadline" value="{{.DeadlineDate}}">
+  </div>
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+  <span id="goal-form-error"></span>
+  <div style="display:flex;gap:.5rem">
+    <button type="button" class="btn btn--sm btn--primary" hx-put="/goals/{{.Goal.ID}}" hx-include="closest .card"
+      hx-target="#goals-grid" hx-swap="outerHTML">Save</button>
+    <button type="button" class="btn btn--sm btn--ghost" hx-get="/goals/{{.Goal.ID}}"
+      hx-target="#goal-card-{{.Goal.ID}}" hx-swap="outerHTML">Cancel</button>
+  </div>
+</div>
+{{end}}
+
+{{template "goals-card-edit" .}}

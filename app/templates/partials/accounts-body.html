@@ -1,0 +1,160 @@
+{{/*
+  Accounts screen body — a self-contained fragment every mutation swaps back
+  in wholesale (create/edit/delete/CC spend/bill-paid), so totals are always
+  correct without hand-rolled OOB math. dot: *accountsData.
+*/}}
+
+{{define "owner-select"}}
+{{/* dot: dict "SelectedID" int64 "PartnerA" model.User "PartnerB" model.User */}}
+<select class="select" name="user_id">
+  <option value="">Household</option>
+  {{if .PartnerA.ID}}<option value="a" {{if eq .SelectedID .PartnerA.ID}}selected{{end}}>{{.PartnerA.Name}} (personal)</option>{{end}}
+  {{if .PartnerB.ID}}<option value="b" {{if eq .SelectedID .PartnerB.ID}}selected{{end}}>{{.PartnerB.Name}} (personal)</option>{{end}}
+</select>
+{{end}}
+
+{{define "account-card"}}
+{{/* dot: dict "Row" acctRow "CSRF" string "Currencies" []string "PartnerA" model.User "PartnerB" model.User */}}
+{{$row := .Row}}{{$csrf := .CSRF}}
+<div class="card" style="padding:.75rem 1rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
+    <div>
+      <p style="font-weight:600;margin:0">
+        {{$row.Name}}
+        {{if $row.OwnerName}}<span class="pill" style="margin-inline-start:.375rem">{{$row.OwnerName}}</span>{{end}}
+      </p>
+      <p class="helper" style="margin-block-start:.125rem">
+        {{if $row.Institution}}{{$row.Institution}}{{else}}No institution set{{end}}{{if $row.IBAN}} · {{$row.IBAN}}{{end}}
+      </p>
+    </div>
+    <button type="button" class="btn btn--ghost btn--sm" hx-delete="/accounts/{{$row.ID}}"
+            hx-target="#accounts-body" hx-swap="outerHTML" hx-confirm="Delete {{$row.Name}}?">Delete</button>
+  </div>
+
+  <form hx-post="/accounts/{{$row.ID}}/balance" hx-target="#accounts-body" hx-swap="outerHTML" hx-trigger="change"
+        style="margin-block-start:.625rem;display:flex;align-items:center;gap:.5rem">
+    <input type="hidden" name="csrf_token" value="{{$csrf}}">
+    <label class="label" for="bal-{{$row.ID}}" style="margin:0">{{$row.Currency}}</label>
+    <input class="input input--figure figure tnum" id="bal-{{$row.ID}}" style="max-width:11rem" data-tick
+           name="balance" inputmode="decimal" value="{{$row.BalanceInput}}" aria-label="Balance">
+  </form>
+
+  <details style="margin-block-start:.5rem">
+    <summary class="helper" style="cursor:pointer;color:var(--color-accent)">Edit details</summary>
+    {{template "account-edit-form" .}}
+  </details>
+</div>
+{{end}}
+
+{{define "account-edit-form"}}
+{{$row := .Row}}{{$csrf := .CSRF}}
+<form hx-post="/accounts/{{$row.ID}}" hx-target="#accounts-body" hx-swap="outerHTML"
+      style="margin-block-start:.625rem;display:grid;gap:.5rem;grid-template-columns:1fr 1fr">
+  <input type="hidden" name="csrf_token" value="{{$csrf}}">
+  <div class="field" style="grid-column:1/-1">
+    <label class="label" for="name-{{$row.ID}}">Name</label>
+    <input class="input" id="name-{{$row.ID}}" name="name" value="{{$row.Name}}" required>
+  </div>
+  <div class="field">
+    <label class="label" for="inst-{{$row.ID}}">Institution</label>
+    <input class="input" id="inst-{{$row.ID}}" name="institution" value="{{$row.Institution}}">
+  </div>
+  <div class="field">
+    <label class="label" for="iban-{{$row.ID}}">IBAN / reference</label>
+    <input class="input" id="iban-{{$row.ID}}" name="iban" value="{{$row.IBAN}}">
+  </div>
+  <div class="field">
+    <label class="label" for="cur-{{$row.ID}}">Currency</label>
+    <select class="select" id="cur-{{$row.ID}}" name="currency">
+      {{range .Currencies}}<option value="{{.}}" {{if eq . $row.Currency}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" for="purp-{{$row.ID}}">Purpose</label>
+    <select class="select" id="purp-{{$row.ID}}" name="purpose">
+      {{range $p, $l := dict "checking" "Checking" "savings" "Savings" "investment" "Investment" "cc_buffer" "Credit card buffer" "envelope" "Budget envelope" "pension" "Pension"}}
+        <option value="{{$p}}" {{if eq $p $row.Purpose}}selected{{end}}>{{$l}}</option>
+      {{end}}
+    </select>
+  </div>
+  <div class="field" style="grid-column:1/-1">
+    <label class="label" for="own-{{$row.ID}}">Owner</label>
+    <div id="own-{{$row.ID}}">{{template "owner-select" (dict "SelectedID" $row.OwnerID "PartnerA" .PartnerA "PartnerB" .PartnerB)}}</div>
+  </div>
+  <button class="btn btn--primary" type="submit" style="grid-column:1/-1">Save changes</button>
+</form>
+{{end}}
+
+{{define "accounts-body"}}
+<div id="accounts-body">
+  {{if .Err}}<p class="helper helper--error" style="margin-block-end:1rem">{{.Err}}</p>{{end}}
+
+  <div class="card" style="margin-block-end:1.5rem">
+    <span class="card__title">Total across accounts</span>
+    <p class="figure figure--lg" data-tick style="margin-block-start:.375rem">{{money .GrandTotalCents .Display}}</p>
+  </div>
+
+  {{range .CC}}{{template "cc-card" (dict "Row" . "CSRF" $.CSRF)}}{{end}}
+
+  {{range .Groups}}
+  <section class="card" style="margin-block-end:1.5rem">
+    <div class="card__head">
+      <span class="card__title">{{.Label}}</span>
+      <span class="figure figure--sm" data-tick>{{money .TotalCents $.Display}}</span>
+    </div>
+    <div style="display:grid;gap:.625rem">
+      {{range .Accounts}}{{template "account-card" (dict "Row" . "CSRF" $.CSRF "Currencies" $.Currencies "PartnerA" $.PartnerA "PartnerB" $.PartnerB)}}{{end}}
+    </div>
+  </section>
+  {{end}}
+
+  <section class="card">
+    <div class="card__head"><span class="card__title">Add account</span></div>
+    <form hx-post="/accounts" hx-target="#accounts-body" hx-swap="outerHTML"
+          style="display:grid;gap:.5rem;grid-template-columns:1fr 1fr">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <div class="field" style="grid-column:1/-1">
+        <label class="label" for="new-name">Name</label>
+        <input class="input" id="new-name" name="name" placeholder="e.g. Holiday budget" required>
+      </div>
+      <div class="field">
+        <label class="label" for="new-inst">Institution</label>
+        <input class="input" id="new-inst" name="institution">
+      </div>
+      <div class="field">
+        <label class="label" for="new-iban">IBAN / reference</label>
+        <input class="input" id="new-iban" name="iban">
+      </div>
+      <div class="field">
+        <label class="label" for="new-cur">Currency</label>
+        <select class="select" id="new-cur" name="currency">
+          {{range .Currencies}}<option value="{{.}}" {{if eq . $.Display}}selected{{end}}>{{.}}</option>{{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="new-purp">Purpose</label>
+        <select class="select" id="new-purp" name="purpose">
+          <option value="checking">Checking</option>
+          <option value="savings">Savings</option>
+          <option value="investment">Investment</option>
+          <option value="cc_buffer">Credit card buffer</option>
+          <option value="envelope">Budget envelope</option>
+          <option value="pension">Pension</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="new-owner">Owner</label>
+        <div id="new-owner">{{template "owner-select" (dict "SelectedID" 0 "PartnerA" .PartnerA "PartnerB" .PartnerB)}}</div>
+      </div>
+      <div class="field">
+        <label class="label" for="new-bal">Opening balance</label>
+        <input class="input input--figure" id="new-bal" name="balance" inputmode="decimal" placeholder="0.00">
+      </div>
+      <button class="btn btn--primary" type="submit" style="grid-column:1/-1">Add account</button>
+    </form>
+  </section>
+</div>
+{{end}}
+
+{{/* File-level body so view.Partial(w, "partials/accounts-body", data) also works. */}}
+{{template "accounts-body" .}}
