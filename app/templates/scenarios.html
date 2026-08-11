@@ -4,20 +4,32 @@
   <h1 style="margin:0">Scenarios</h1>
 </div>
 
-<div class="card" style="margin-block-end:1rem">
-  <div class="card__head"><h3 class="card__title">New scenario</h3></div>
-  <form hx-post="/scenarios" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
-    <div class="field" style="flex:1;min-width:12rem">
-      <label class="label" for="new-scenario-name">Name</label>
-      <input class="input" id="new-scenario-name" name="name" placeholder="e.g. Raise + bigger flat" required>
-    </div>
-    <button class="btn btn--primary" type="submit">Create</button>
-  </form>
-</div>
+<div x-data="{ open: false }" style="margin-block-end:1rem">
+  {{if $d.Cards}}
+  <button type="button" class="btn btn--ghost" style="width:100%;border-style:dashed"
+    x-show="!open" @click="open = true">+ New scenario</button>
+  {{else}}
+  <div class="card" style="text-align:center;padding-block:2rem" x-show="!open">
+    <p class="auth__meta" style="margin:0 0 1rem">
+      A scenario stacks changes &mdash; a raise, a bigger flat, a paid-off loan &mdash;
+      and shows what each one does to your cash flow, goals and net worth.
+    </p>
+    <button type="button" class="btn btn--primary" @click="open = true">Build your first scenario</button>
+  </div>
+  {{end}}
 
-{{if not $d.Cards}}
-<div class="card"><p class="auth__meta" style="margin:0">No scenarios yet. Stack a few changes above and see the cascade.</p></div>
-{{end}}
+  <div class="card" x-show="open" x-cloak {{if $d.Cards}}style="margin-block-start:.75rem"{{end}}>
+    <div class="card__head"><h3 class="card__title">New scenario</h3></div>
+    <form hx-post="/scenarios" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
+      <div class="field" style="flex:1;min-width:12rem">
+        <label class="label" for="new-scenario-name">Name</label>
+        <input class="input" id="new-scenario-name" name="name" placeholder="e.g. Raise + bigger flat" required>
+      </div>
+      <button class="btn btn--primary" type="submit">Create</button>
+      <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+    </form>
+  </div>
+</div>
 
 <div style="display:grid;gap:.75rem">
   {{range $d.Cards}}

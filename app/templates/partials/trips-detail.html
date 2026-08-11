@@ -4,8 +4,20 @@
   Dot is *handler.tripDetailView.
 */}}
 {{define "trips-detail"}}
-<div class="card" style="margin-block-end:1rem">
-  <form hx-post="/trips/{{.Trip.ID}}" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
+<div class="card" style="margin-block-end:1rem" x-data="{ open: false }">
+  <div class="card__head">
+    <h3 class="card__title" style="margin:0">{{.Trip.Name}}</h3>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      {{if .Trip.Committed}}
+      <span class="pill pill--positive">committed</span>
+      <button class="btn btn--sm btn--ghost" type="button" hx-post="/trips/{{.Trip.ID}}/uncommit" hx-target="#trip-detail-panel" hx-swap="innerHTML" hx-confirm="Uncommit? This removes the funding expense.">Uncommit</button>
+      {{else}}
+      <button class="btn btn--sm btn--primary" type="button" hx-post="/trips/{{.Trip.ID}}/commit" hx-target="#trip-detail-panel" hx-swap="innerHTML">Commit &amp; fund it</button>
+      {{end}}
+      <button type="button" class="btn btn--sm btn--ghost" x-show="!open" @click="open = true">Edit trip</button>
+    </div>
+  </div>
+  <form hx-post="/trips/{{.Trip.ID}}" x-show="open" x-cloak style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end;margin-block-start:.75rem">
     <div class="field" style="flex:2;min-width:12rem">
       <label class="label" for="trip-name">Name</label>
       <input class="input" id="trip-name" name="name" value="{{.Trip.Name}}" required>
@@ -19,12 +31,7 @@
       <input class="input" id="trip-months" name="months_to_save" type="number" min="1" value="{{.Trip.MonthsToSave}}">
     </div>
     <button class="btn btn--sm" type="submit">Save</button>
-    {{if .Trip.Committed}}
-    <span class="pill pill--positive">committed</span>
-    <button class="btn btn--sm btn--ghost" type="button" hx-post="/trips/{{.Trip.ID}}/uncommit" hx-target="#trip-detail-panel" hx-swap="innerHTML" hx-confirm="Uncommit? This removes the funding expense.">Uncommit</button>
-    {{else}}
-    <button class="btn btn--sm btn--primary" type="button" hx-post="/trips/{{.Trip.ID}}/commit" hx-target="#trip-detail-panel" hx-swap="innerHTML">Commit &amp; fund it</button>
-    {{end}}
+    <button type="button" class="btn btn--sm btn--ghost" @click="open = false">Cancel</button>
   </form>
 </div>
 
@@ -38,8 +45,11 @@
 </div>
 {{end}}
 
-<div class="card" style="margin-block-end:1rem">
-  <div class="card__head"><h3 class="card__title">Costs</h3></div>
+<div class="card" style="margin-block-end:1rem" x-data="{ open: false }">
+  <div class="card__head">
+    <h3 class="card__title">Costs</h3>
+    {{if .Trip.Items}}<button type="button" class="btn btn--sm btn--ghost" x-show="!open" @click="open = true">+ Add cost</button>{{end}}
+  </div>
   {{if .FormError}}
   <div class="flash flash--error" style="margin-block-end:1rem"><span class="flash__mark" aria-hidden="true">⚠</span><span>{{.FormError}}</span></div>
   {{end}}
@@ -71,10 +81,13 @@
     </table>
   </div>
   {{else}}
-  <p class="auth__meta" style="margin:0 0 1rem">No items yet.</p>
+  <div style="text-align:center;padding-block:2rem" x-show="!open">
+    <p class="auth__meta" style="margin:0 0 1rem">No cost items yet. Break the trip down into flights, stays, and activities to see the true total.</p>
+    <button type="button" class="btn btn--primary" @click="open = true">Add your first cost</button>
+  </div>
   {{end}}
 
-  <form hx-post="/trips/{{.Trip.ID}}/items" hx-target="#trip-detail-panel" hx-swap="innerHTML" style="display:grid;gap:.625rem;grid-template-columns:2fr 1fr 1fr 1fr auto;align-items:flex-end">
+  <form hx-post="/trips/{{.Trip.ID}}/items" hx-target="#trip-detail-panel" hx-swap="innerHTML" x-show="open" x-cloak style="display:grid;gap:.625rem;grid-template-columns:2fr 1fr 1fr 1fr auto auto;align-items:flex-end;margin-block-start:1rem">
     <div class="field">
       <label class="label" for="ti-name">Item</label>
       <input class="input" id="ti-name" name="name" placeholder="Flights EU">
@@ -92,6 +105,7 @@
       <select class="select" id="ti-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
     </div>
     <button class="btn btn--primary" type="submit">Add</button>
+    <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
   </form>
 </div>
 

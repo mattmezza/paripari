@@ -25,6 +25,9 @@
     </div>
   </div>
 
+  {{/* With nothing owned yet, a doughnut of three zeroes and a flat 0-line
+       history are noise: an empty chart reads as a broken chart. */}}
+  {{if or .Liquid .Alternative .RealEstate}}
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-block-end:1rem">
     <div class="card" x-data="ppNetWorthCharts()" x-init="initBreakdown()">
       <div class="card__head"><h2 class="card__title">Breakdown</h2></div>
@@ -48,40 +51,73 @@
       {{end}}
     </div>
   </div>
+  {{else}}
+  <div class="card" style="margin-block-end:1rem">
+    <p class="auth__meta" style="margin:0">
+      Nothing to chart yet. Add an account balance, gold or an asset and the
+      breakdown and history appear here.
+    </p>
+  </div>
+  {{end}}
 
   <script type="application/json" id="nw-payload">{{json .Payload}}</script>
 
   <div class="card">
     <div class="card__head"><h2 class="card__title">Real estate &amp; other assets</h2></div>
+
+    {{if .Assets}}
     <div class="table-scroll">
       <table class="table">
         <thead><tr><th>Name</th><th>Kind</th><th class="num">Value</th><th></th></tr></thead>
         <tbody>
           {{range .Assets}}{{template "networth-asset-row" .}}{{end}}
-          <tr>
-            <td><input class="input" name="name" placeholder="e.g. Apartment, Watch collection"></td>
-            <td>
-              <select class="select" name="kind">
-                <option value="real_estate">Real estate</option>
-                <option value="other">Other</option>
-              </select>
-            </td>
-            <td class="num">
-              <div style="display:flex;gap:.375rem;justify-content:flex-end">
-                <input class="input input--figure" name="estimated_value" placeholder="0.00" style="width:8rem">
-                <select class="select" name="currency" style="width:5.5rem">
-                  {{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}
-                </select>
-              </div>
-            </td>
-            <td>
-              <button type="button" class="btn btn--sm btn--primary" hx-post="/net-worth/assets" hx-include="closest tr"
-                hx-target="#networth-main" hx-swap="outerHTML">Add</button>
-            </td>
-          </tr>
         </tbody>
       </table>
     </div>
+    {{end}}
+
+    <div x-data="{ open: false }" {{if .Assets}}style="margin-block-start:1rem"{{end}}>
+      {{if .Assets}}
+      <button type="button" class="btn btn--ghost" style="width:100%;border-style:dashed"
+        x-show="!open" @click="open = true">+ Add asset</button>
+      {{else}}
+      <div style="text-align:center;padding-block:2rem;border:1px dashed var(--color-rule);border-radius:var(--radius-md)" x-show="!open">
+        <p class="auth__meta" style="margin:0 0 1rem">
+          This is where you track property and other assets you value manually rather than by live price.
+        </p>
+        <button type="button" class="btn btn--primary" @click="open = true">Add your first asset</button>
+      </div>
+      {{end}}
+
+      <div class="add-form" x-show="open" x-cloak style="display:grid;gap:.5rem;margin-block-start:.75rem">
+        <div class="field">
+          <label class="label" for="nw-new-name">Name</label>
+          <input class="input" id="nw-new-name" name="name" placeholder="e.g. Apartment, Watch collection">
+        </div>
+        <div class="field">
+          <label class="label" for="nw-new-kind">Kind</label>
+          <select class="select" id="nw-new-kind" name="kind">
+            <option value="real_estate">Real estate</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="nw-new-value">Value</label>
+          <div style="display:flex;gap:.375rem">
+            <input class="input input--figure" id="nw-new-value" name="estimated_value" placeholder="0.00" style="width:8rem">
+            <select class="select" name="currency" style="width:5.5rem">
+              {{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <button type="button" class="btn btn--primary" hx-post="/net-worth/assets" hx-include="closest .add-form"
+            hx-target="#networth-main" hx-swap="outerHTML">Add</button>
+          <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <span id="nw-asset-form-error"></span>
   </div>
 </div>

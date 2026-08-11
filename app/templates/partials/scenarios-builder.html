@@ -21,10 +21,16 @@
   </form>
 </div>
 
-<div class="card" style="margin-block-end:1rem">
-  <div class="card__head"><h3 class="card__title">Changes</h3></div>
+<div class="card" style="margin-block-end:1rem" x-data="{ open: false }">
+  <div class="card__head">
+    <h3 class="card__title">Changes</h3>
+    {{if .ChangeRows}}<button type="button" class="btn btn--sm btn--ghost" x-show="!open" @click="open = true">+ Add change</button>{{end}}
+  </div>
   {{if not .ChangeRows}}
-  <p class="auth__meta" style="margin:0 0 1rem">No changes yet — add one below.</p>
+  <div style="text-align:center;padding-block:2rem" x-show="!open">
+    <p class="auth__meta" style="margin:0 0 1rem">No changes yet. Add one to see its effect on your goals.</p>
+    <button type="button" class="btn btn--primary" @click="open = true">Add your first change</button>
+  </div>
   {{else}}
   <div class="table-scroll" style="margin-block-end:1rem">
     <table class="table">
@@ -46,7 +52,7 @@
   {{end}}
 
   <form hx-post="/scenarios/{{.Scenario.ID}}/changes" hx-target="#scenario-builder-panel" hx-swap="innerHTML"
-        x-data="{type:'expense_amount'}" style="display:grid;gap:.75rem">
+        x-data="{type:'expense_amount'}" x-show="open" x-cloak style="display:grid;gap:.75rem">
     <div class="field">
       <label class="label" for="change_type">Change type</label>
       <select class="select" id="change_type" name="change_type" x-model="type">
@@ -182,7 +188,10 @@
       </select>
     </div>
 
-    <button class="btn btn--primary" type="submit" style="justify-self:start">Add change</button>
+    <div style="display:flex;gap:.5rem;justify-self:start">
+      <button class="btn btn--primary" type="submit">Add change</button>
+      <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+    </div>
   </form>
 </div>
 

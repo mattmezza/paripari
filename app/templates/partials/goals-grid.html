@@ -6,10 +6,19 @@
   Dot is *handler.goalsData.
 */}}
 {{define "goals-grid"}}
-<div id="goals-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem">
+<div id="goals-grid" x-data="{ open: false }" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem">
   {{range .Goals}}{{template "goals-card" .}}{{end}}
 
-  <div class="card" style="border-style:dashed;display:flex;flex-direction:column">
+  {{if not .Goals}}
+  <div class="card" style="grid-column:1/-1;text-align:center;padding-block:2rem" x-show="!open">
+    <p class="auth__meta" style="margin:0 0 1rem">No goals yet. Name what you're saving for — a safety net, a property deposit, education — and track progress toward it.</p>
+    <button type="button" class="btn btn--primary" @click="open = true">Add your first goal</button>
+  </div>
+  {{else}}
+  <button type="button" class="btn btn--ghost" style="border-style:dashed;min-height:44px" x-show="!open" @click="open = true">+ Add goal</button>
+  {{end}}
+
+  <div class="card" style="border-style:dashed;display:flex;flex-direction:column" x-show="open" x-cloak>
     <h3 class="card__title" style="margin-block-end:.75rem">New goal</h3>
     <div class="field">
       <label class="label" for="goal-new-name">Name</label>
@@ -42,8 +51,11 @@
     </div>
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
     <span id="goal-form-error"></span>
-    <button type="button" class="btn btn--primary" style="margin-block-start:auto"
-      hx-post="/goals" hx-include="closest .card" hx-target="#goals-grid" hx-swap="outerHTML">Add goal</button>
+    <div style="display:flex;gap:.5rem;margin-block-start:auto">
+      <button type="button" class="btn btn--primary"
+        hx-post="/goals" hx-include="closest .card" hx-target="#goals-grid" hx-swap="outerHTML">Add goal</button>
+      <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+    </div>
   </div>
 </div>
 {{end}}

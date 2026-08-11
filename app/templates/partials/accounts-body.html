@@ -89,6 +89,9 @@
 <div id="accounts-body">
   {{if .Err}}<p class="helper helper--error" style="margin-block-end:1rem">{{.Err}}</p>{{end}}
 
+  <div x-data="{ open: false }">
+
+  {{if or .CC .Groups}}
   <div class="card" style="margin-block-end:1.5rem">
     <span class="card__title">Total across accounts</span>
     <p class="figure figure--lg" data-tick style="margin-block-start:.375rem">{{money .GrandTotalCents .Display}}</p>
@@ -108,7 +111,19 @@
   </section>
   {{end}}
 
-  <section class="card">
+  <button type="button" class="btn btn--ghost" style="width:100%;border-style:dashed;margin-block-end:1.5rem"
+    x-show="!open" @click="open = true">+ Add account</button>
+  {{else}}
+  <div class="card" style="text-align:center;padding-block:2rem;margin-block-end:1.5rem" x-show="!open">
+    <p class="auth__meta" style="margin:0 0 1rem">
+      No accounts yet. Add the accounts you actually use &mdash; a common checking
+      account, personal savings, a credit-card buffer.
+    </p>
+    <button type="button" class="btn btn--primary" @click="open = true">Add your first account</button>
+  </div>
+  {{end}}
+
+  <section class="card" x-show="open" x-cloak>
     <div class="card__head"><span class="card__title">Add account</span></div>
     <form hx-post="/accounts" hx-target="#accounts-body" hx-swap="outerHTML"
           style="display:grid;gap:.5rem;grid-template-columns:1fr 1fr">
@@ -150,9 +165,14 @@
         <label class="label" for="new-bal">Opening balance</label>
         <input class="input input--figure" id="new-bal" name="balance" inputmode="decimal" placeholder="0.00">
       </div>
-      <button class="btn btn--primary" type="submit" style="grid-column:1/-1">Add account</button>
+      <div style="grid-column:1/-1;display:flex;gap:.5rem">
+        <button class="btn btn--primary" type="submit">Add account</button>
+        <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+      </div>
     </form>
   </section>
+
+  </div>
 </div>
 {{end}}
 

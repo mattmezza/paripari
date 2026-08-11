@@ -23,6 +23,8 @@
 
   <div class="card">
     <div class="card__head"><h2 class="card__title">Inventory</h2></div>
+
+    {{if .Items}}
     <div class="table-scroll">
       <table class="table">
         <thead>
@@ -30,25 +32,6 @@
         </thead>
         <tbody>
           {{range .Items}}{{template "gold-item-row" .}}{{end}}
-          <tr>
-            <td><input class="input" name="name" placeholder="e.g. Coin, Bar"></td>
-            <td>
-              <select class="select" name="purity_karat">
-                <option value="24">24K</option>
-                <option value="22">22K</option>
-                <option value="18">18K</option>
-                <option value="14">14K</option>
-              </select>
-            </td>
-            <td class="num"><input class="input input--figure" name="weight_grams" placeholder="0.0" style="width:6rem" inputmode="decimal"></td>
-            <td class="num"><input class="input input--figure" name="quantity" value="1" style="width:4rem" inputmode="numeric"></td>
-            <td><input class="input" name="location" placeholder="e.g. Bank safe" style="width:9rem"></td>
-            <td class="num">&mdash;</td>
-            <td>
-              <button type="button" class="btn btn--sm btn--primary" hx-post="/gold/items" hx-include="closest tr"
-                hx-target="#gold-main" hx-swap="outerHTML">Add</button>
-            </td>
-          </tr>
         </tbody>
         <tfoot>
           <tr>
@@ -61,6 +44,56 @@
         </tfoot>
       </table>
     </div>
+    {{end}}
+
+    <div x-data="{ open: false }" {{if .Items}}style="margin-block-start:1rem"{{end}}>
+      {{if .Items}}
+      <button type="button" class="btn btn--ghost" style="width:100%;border-style:dashed"
+        x-show="!open" @click="open = true">+ Add item</button>
+      {{else}}
+      <div style="text-align:center;padding-block:2rem;border:1px dashed var(--color-rule);border-radius:var(--radius-md)" x-show="!open">
+        <p class="auth__meta" style="margin:0 0 1rem">
+          This is where you track physical gold you own &mdash; coins, bars, jewellery &mdash;
+          valued automatically at the live spot price.
+        </p>
+        <button type="button" class="btn btn--primary" @click="open = true">Add your first item</button>
+      </div>
+      {{end}}
+
+      <div class="add-form" x-show="open" x-cloak style="display:grid;gap:.5rem;margin-block-start:.75rem;grid-template-columns:1fr 1fr">
+        <div class="field">
+          <label class="label" for="gold-new-name">Name</label>
+          <input class="input" id="gold-new-name" name="name" placeholder="e.g. Coin, Bar">
+        </div>
+        <div class="field">
+          <label class="label" for="gold-new-purity">Purity</label>
+          <select class="select" id="gold-new-purity" name="purity_karat">
+            <option value="24">24K</option>
+            <option value="22">22K</option>
+            <option value="18">18K</option>
+            <option value="14">14K</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="gold-new-weight">Weight (g)</label>
+          <input class="input input--figure" id="gold-new-weight" name="weight_grams" placeholder="0.0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label class="label" for="gold-new-qty">Qty</label>
+          <input class="input input--figure" id="gold-new-qty" name="quantity" value="1" inputmode="numeric">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label class="label" for="gold-new-location">Location</label>
+          <input class="input" id="gold-new-location" name="location" placeholder="e.g. Bank safe">
+        </div>
+        <div style="grid-column:1/-1;display:flex;gap:.5rem">
+          <button type="button" class="btn btn--primary" hx-post="/gold/items" hx-include="closest .add-form"
+            hx-target="#gold-main" hx-swap="outerHTML">Add</button>
+          <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <span id="gold-item-form-error"></span>
   </div>
 </div>

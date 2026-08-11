@@ -53,3 +53,21 @@ Read `/home/matteo/dev/paripari/prompt.md` first. This file resolves everything 
 - Engine: table-driven unit tests (this is the money math — thorough).
 - Handlers: a few httptest smoke tests (login → dashboard 200).
 - `make test` = `go test ./...` from `app/`. CI (`ci.yml`): on PR + push to main, runs-on self-hosted, go test + go vet + build. `release.yml`: on release published, docker build + push `ghcr.io/mattmezza/paripari` (tags: version + latest), runs-on self-hosted.
+
+## Add forms
+
+Screens show data, not data entry. A collection that is empty shows one calm
+card explaining what lives there plus a primary "Add your first X" button; a
+collection with rows shows the rows plus a full-width dashed `+ Add X` button.
+The form itself only appears when the user asks for it.
+
+The disclosure is an Alpine `x-data="{ open: false }"` wrapper around both the
+trigger and the form (`x-show="open" x-cloak`), with a Cancel button that sets
+`open = false`. Adds re-render the enclosing region via an htmx `outerHTML`
+swap, which rebuilds the wrapper with `open: false`, so the form closes itself
+after a save — no JS for that. Income and expenses instead fetch their form
+partial over htmx, which predates this pattern and works the same way to the
+user.
+
+Never render an empty chart. With no data, show a one-line placeholder where the
+chart would be — a doughnut of zeroes reads as a broken chart, not an empty one.

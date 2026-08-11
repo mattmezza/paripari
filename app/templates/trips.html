@@ -4,24 +4,32 @@
   <h1 style="margin:0">Trips</h1>
 </div>
 
-<div class="card" style="margin-block-end:1rem">
-  <div class="card__head"><h3 class="card__title">Plan a trip</h3></div>
-  <form hx-post="/trips" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
-    <div class="field" style="flex:2;min-width:12rem">
-      <label class="label" for="new-trip-name">Name</label>
-      <input class="input" id="new-trip-name" name="name" placeholder="e.g. Portugal, October" required>
-    </div>
-    <div class="field" style="flex:1;min-width:10rem">
-      <label class="label" for="new-trip-date">Start date</label>
-      <input class="input" id="new-trip-date" name="start_date" type="date">
-    </div>
-    <button class="btn btn--primary" type="submit">Create</button>
-  </form>
-</div>
+<div x-data="{ open: false }">
+  {{if not $d.Trips}}
+  <div class="card" style="text-align:center;padding-block:2rem;margin-block-end:1rem" x-show="!open">
+    <p class="auth__meta" style="margin:0 0 1rem">No trips yet. Itemize one and see the impact on your goals.</p>
+    <button type="button" class="btn btn--primary" @click="open = true">Plan your first trip</button>
+  </div>
+  {{else}}
+  <button type="button" class="btn btn--ghost" style="width:100%;border-style:dashed;margin-block-end:1rem" x-show="!open" @click="open = true">+ Plan a trip</button>
+  {{end}}
 
-{{if not $d.Trips}}
-<div class="card"><p class="auth__meta" style="margin:0">No trips yet. Itemize one and see the impact on your goals.</p></div>
-{{end}}
+  <div class="card" style="margin-block-end:1rem" x-show="open" x-cloak>
+    <div class="card__head"><h3 class="card__title">Plan a trip</h3></div>
+    <form hx-post="/trips" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
+      <div class="field" style="flex:2;min-width:12rem">
+        <label class="label" for="new-trip-name">Name</label>
+        <input class="input" id="new-trip-name" name="name" placeholder="e.g. Portugal, October" required>
+      </div>
+      <div class="field" style="flex:1;min-width:10rem">
+        <label class="label" for="new-trip-date">Start date</label>
+        <input class="input" id="new-trip-date" name="start_date" type="date">
+      </div>
+      <button class="btn btn--primary" type="submit">Create</button>
+      <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+    </form>
+  </div>
+</div>
 
 <div style="display:grid;gap:.75rem">
   {{range $d.Trips}}

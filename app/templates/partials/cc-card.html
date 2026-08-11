@@ -13,10 +13,10 @@
   <p class="helper" style="margin-block-end:1rem">Buffer balance — should always cover the upcoming bill.</p>
 
   <div style="display:flex;flex-wrap:wrap;gap:.625rem;margin-block-end:1rem">
-    <details style="flex:1 1 14rem">
-      <summary class="btn btn--primary" style="width:100%">Record CC spend</summary>
+    <div style="flex:1 1 14rem" x-data="{ open: false }">
+      <button type="button" class="btn btn--primary" style="width:100%" x-show="!open" @click="open = true">Record a spend</button>
       <form hx-post="/accounts/cc/{{$acc.ID}}/spend" hx-target="#accounts-body" hx-swap="outerHTML"
-            style="margin-block-start:.75rem;display:grid;gap:.25rem">
+            x-show="open" x-cloak style="display:grid;gap:.25rem">
         <input type="hidden" name="csrf_token" value="{{$csrf}}">
         <div class="field">
           <label class="label" for="ccspend-desc-{{$acc.ID}}">Description</label>
@@ -30,9 +30,12 @@
           <label class="label" for="ccspend-cb-{{$acc.ID}}">Cashback <span class="label__req">optional</span></label>
           <input class="input input--figure" id="ccspend-cb-{{$acc.ID}}" name="cashback" inputmode="decimal" placeholder="0.00">
         </div>
-        <button class="btn btn--primary" type="submit">Add spend &amp; set aside</button>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn--primary" type="submit">Add spend &amp; set aside</button>
+          <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+        </div>
       </form>
-    </details>
+    </div>
     <details style="flex:1 1 14rem">
       <summary class="btn" style="width:100%">Bill paid</summary>
       <form hx-post="/accounts/cc/{{$acc.ID}}/bill-paid" hx-target="#accounts-body" hx-swap="outerHTML"
