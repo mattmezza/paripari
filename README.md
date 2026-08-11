@@ -150,3 +150,8 @@ Open an issue or pull request. Larger changes: open an issue first to discuss.
 ---
 
 For detailed deployment, architecture, and self-hosting information, see the [docs/](docs) directory.
+
+One instance can hold many households and the code keeps them apart, but the
+operational work for hosting other people (rate limiting, signup policy,
+resource limits) is not done. If that is your plan, start with
+[docs/multi-tenancy.md](docs/multi-tenancy.md).

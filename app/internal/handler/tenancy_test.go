@@ -166,3 +166,54 @@ func TestChildRecordsAreTenantScoped(t *testing.T) {
 		t.Errorf("own trip item survived: %+v", items)
 	}
 }
+
+// Card transactions are scoped through the account that owns them. They had no
+// handler reaching them with a raw id, so this was never exploitable — the test
+// exists so the next route added cannot make it so.
+func TestCCTransactionsAreTenantScoped(t *testing.T) {
+	h, st := newServerStore(t)
+	_, hhA := signup(t, h, st, "cc-a@example.com")
+	_, hhB := signup(t, h, st, "cc-b@example.com")
+
+	accA, err := st.CreateAccount(&model.Account{
+		HouseholdID: hhA, Name: "A card", Currency: "CHF", BalanceCents: 100_000, Purpose: "cc_buffer",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.CreateCCTransaction(hhA, &model.CCTransaction{
+		AccountID: accA, Description: "Coffee", AmountCents: 450, Currency: "CHF", CashbackCents: 10,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// B cannot read A's rows through A's account id.
+	if txs, err := st.CCTransactions(hhB, accA, 0); err != nil || len(txs) != 0 {
+		t.Errorf("B read A's card transactions: %v, %v", txs, err)
+	}
+	if cb, err := st.CCCashbackTotal(hhB, accA); err != nil || cb != 0 {
+		t.Errorf("B read A's cashback: %d, %v", cb, err)
+	}
+	// B cannot write into A's account.
+	if _, err := st.CreateCCTransaction(hhB, &model.CCTransaction{
+		AccountID: accA, Description: "Hijack", AmountCents: 999, Currency: "CHF",
+	}); err != store.ErrNotFound {
+		t.Errorf("B wrote into A's account: err = %v, want ErrNotFound", err)
+	}
+	// B cannot delete A's row.
+	txs, err := st.CCTransactions(hhA, accA, 0)
+	if err != nil || len(txs) != 1 {
+		t.Fatalf("A's own rows: %v, %v", txs, err)
+	}
+	if err := st.DeleteCCTransaction(hhB, txs[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	// A's data is untouched throughout.
+	after, err := st.CCTransactions(hhA, accA, 0)
+	if err != nil || len(after) != 1 || after[0].Description != "Coffee" || after[0].CashbackCents != 10 {
+		t.Errorf("A's transactions were tampered with: %+v", after)
+	}
+	if cb, err := st.CCCashbackTotal(hhA, accA); err != nil || cb != 10 {
+		t.Errorf("A's cashback = %d, want 10 (%v)", cb, err)
+	}
+}

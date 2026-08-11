@@ -128,6 +128,11 @@ Embedded assets (served from FS, not disk):
 
 ## Database schema
 
+Every table of user data is scoped to a household, and every query that reads or
+writes it carries that scope in the SQL. See
+[multi-tenancy.md](multi-tenancy.md) for the rule new store methods must follow,
+and for what is still outstanding before hosting more than one household.
+
 All stored in SQLite. Key tables:
 
 | Table | Purpose |

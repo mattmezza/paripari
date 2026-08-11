@@ -113,7 +113,7 @@ func seedBackupData(t *testing.T, st *store.Store, hhID, userID int64) {
 	envelope := newAcc("Groceries envelope", "envelope", 25_000, nil)
 	buffer := newAcc("Card buffer", "cc_buffer", 90_000, &userID)
 
-	if _, err := st.CreateCCTransaction(&model.CCTransaction{
+	if _, err := st.CreateCCTransaction(hhID, &model.CCTransaction{
 		AccountID: buffer, Description: "Coffee", AmountCents: 4_50, Currency: "CHF", CashbackCents: 10,
 	}); err != nil {
 		t.Fatal(err)

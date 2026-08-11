@@ -118,7 +118,7 @@ func (s *Store) ExportHousehold(householdID int64) (*Backup, error) {
 		return nil, err
 	}
 	for _, a := range b.Accounts {
-		txs, err := s.CCTransactions(a.ID, 0)
+		txs, err := s.CCTransactions(householdID, a.ID, 0)
 		if err != nil {
 			return nil, err
 		}

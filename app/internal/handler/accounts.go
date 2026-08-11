@@ -111,11 +111,11 @@ func buildAccountsData(d *Deps, r *http.Request) (*accountsData, error) {
 	for _, a := range accounts {
 		data.GrandTotalCents += d.Rates.Convert(a.BalanceCents, a.Currency, hh.DisplayCurrency)
 		if a.Purpose == "cc_buffer" {
-			tx, err := d.Store.CCTransactions(a.ID, 10)
+			tx, err := d.Store.CCTransactions(hh.ID, a.ID, 10)
 			if err != nil {
 				return nil, err
 			}
-			cb, err := d.Store.CCCashbackTotal(a.ID)
+			cb, err := d.Store.CCCashbackTotal(hh.ID, a.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -289,7 +289,7 @@ func registerCC(mux *http.ServeMux, d *Deps) {
 			renderAccountsBody(d, w, r, http.StatusUnprocessableEntity, "That cashback amount doesn't look valid.")
 			return
 		}
-		if _, err := d.Store.CreateCCTransaction(&model.CCTransaction{
+		if _, err := d.Store.CreateCCTransaction(sess.Household.ID, &model.CCTransaction{
 			AccountID: acc.ID, Description: desc, AmountCents: amount, Currency: acc.Currency, CashbackCents: cashback,
 		}); err != nil {
 			http.Error(w, "could not record spend", http.StatusInternalServerError)

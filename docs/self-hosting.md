@@ -294,3 +294,6 @@ Always run PariPari behind a reverse proxy with HTTPS in production, and set `SE
 - Check logs: `docker compose logs paripari`
 - Open an issue: [github.com/mattmezza/paripari/issues](https://github.com/mattmezza/paripari/issues)
 - Review the architecture doc: [docs/architecture.md](architecture.md)
+- **Hosting for more than your own household?** Read
+  [docs/multi-tenancy.md](multi-tenancy.md) first — the data isolation is done
+  and tested, but rate limiting, signup policy and resource limits are not.
