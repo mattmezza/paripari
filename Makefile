@@ -28,9 +28,14 @@ docker-build: ## Build the Docker image locally
 	docker build -t $(IMAGE):dev -f $(APP)/Dockerfile $(APP)
 
 release: ## Tag and publish a release: make release name=v0.1
-	@test -n "$(name)" || (echo "usage: make release name=vX.Y" && exit 1)
+	@test -n "$(name)" || { echo "usage: make release name=vX.Y"; exit 1; }
+	@git diff-index --quiet HEAD -- || { echo "working tree is dirty — commit first"; exit 1; }
+	@test -z "$$(git log @{u}.. --oneline 2>/dev/null)" || { echo "unpushed commits — run git push first"; exit 1; }
+	@git rev-parse -q --verify refs/tags/$(name) >/dev/null && { echo "tag $(name) already exists"; exit 1; } || true
+	$(MAKE) test
 	git tag -a $(name) -m "$(name)" && git push origin $(name)
 	gh release create $(name) --generate-notes
+	@echo "released $(name) — GHA is building ghcr.io/mattmezza/paripari:$(name)"
 
 seed: ## Insert demo data (refuses on a non-empty database)
 	cd $(APP) && go run ./cmd/server -seed

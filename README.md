@@ -120,9 +120,17 @@ Tag and publish a release:
 make release name=v0.1
 ```
 
-This creates a GitHub release, which triggers a GitHub Actions workflow to build the Docker image and push it to `ghcr.io/mattmezza/paripari:v0.1` and `ghcr.io/mattmezza/paripari:latest`.
+The target refuses to run on a dirty tree, with unpushed commits, or on a tag
+that already exists; it runs the tests, then tags, pushes, and creates the
+GitHub release. Publishing the release triggers the workflow that builds the
+Docker image and pushes `ghcr.io/mattmezza/paripari:v0.1` and `:latest`.
 
-Releases run on a self-hosted runner; ensure the runner is active before releasing.
+CI runs on pull requests only. Nothing is built or published on a plain commit
+or a push to `main` — the release workflow re-runs vet and tests before it
+builds, so a tag cut from a broken tree never reaches the registry.
+
+Both workflows run on a self-hosted runner; make sure it is active before
+opening a PR or releasing.
 
 ## Tech stack
 
