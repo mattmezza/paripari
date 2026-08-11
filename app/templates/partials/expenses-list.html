@@ -21,8 +21,12 @@
 
     <div style="display:grid;gap:.625rem;margin-block-start:.75rem">
       {{range .Rows}}
-      <div style="display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:center;padding-block:.375rem;border-block-start:1px solid var(--color-rule)">
-        <div>
+      {{/* The edit form swaps over this row, not over #expenses-list: the form's
+           own Save and Cancel target the list, so it must survive the swap. */}}
+      {{/* flex-wrap, not a 3-column grid: at 380px the name and the two partner
+           shares get a full line and the controls drop below them. */}}
+      <div id="expense-row-{{.Exp.ID}}" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding-block:.5rem;border-block-start:1px solid var(--color-rule)">
+        <div style="flex:1 1 11rem;min-width:0">
           <div>{{.Exp.Name}}{{if .Exp.IsSavings}} <span class="pill pill--positive" style="font-size:.6875rem">savings</span>{{end}}</div>
           {{if .OwnerName}}<div class="auth__meta" style="margin:0">{{.OwnerName}}</div>
           {{else}}<div class="auth__meta tnum" style="margin:0">{{$root.PartnerAName}} {{money .ShareACents $root.Currency}} · {{$root.PartnerBName}} {{money .ShareBCents $root.Currency}}</div>{{end}}
@@ -31,8 +35,8 @@
           <input type="hidden" name="csrf_token" value="{{$root.CSRF}}">
           <input class="input input--figure" style="width:7rem" type="text" inputmode="decimal" name="amount" value="{{.AmountStr}}" aria-label="Amount for {{.Exp.Name}}">
         </form>
-        <div style="display:flex;gap:.25rem">
-          <button type="button" class="btn btn--sm btn--ghost" hx-get="/expenses/{{.Exp.ID}}/edit" hx-target="#expenses-list" hx-swap="outerHTML">Edit</button>
+        <div style="display:flex;gap:.25rem;margin-inline-start:auto">
+          <button type="button" class="btn btn--sm btn--ghost" hx-get="/expenses/{{.Exp.ID}}/edit" hx-target="#expense-row-{{.Exp.ID}}" hx-swap="outerHTML">Edit</button>
           <button type="button" class="btn btn--sm btn--danger" hx-delete="/expenses/{{.Exp.ID}}" hx-target="#expenses-list" hx-swap="outerHTML" hx-confirm="Delete {{.Exp.Name}}?">Delete</button>
         </div>
       </div>
