@@ -103,11 +103,11 @@ func registerIncome(mux *http.ServeMux, d *Deps) {
 			return
 		}
 		src.ID = id
-		if err := saveDeductions(d, id, r); err != nil {
+		if err := saveDeductions(d, sess.Household.ID, id, r); err != nil {
 			http.Error(w, "could not save deductions", http.StatusInternalServerError)
 			return
 		}
-		src.Deductions, _ = d.Store.Deductions(id)
+		src.Deductions, _ = d.Store.Deductions(sess.Household.ID, id)
 
 		w.Header().Set("HX-Trigger", "pp:recalc")
 		d.View.Partial(w, "partials/income-card", incomeSourceView{Src: src, Calc: service.NetMonthly(src)})
@@ -128,20 +128,25 @@ func registerIncome(mux *http.ServeMux, d *Deps) {
 		}
 		src.ID = id
 		src.HouseholdID = sess.Household.ID
+		// Not this household's income source: don't touch its deductions.
+		if _, err := d.Store.Income(sess.Household.ID, id); err != nil {
+			http.NotFound(w, r)
+			return
+		}
 		if err := d.Store.UpdateIncome(&src); err != nil {
 			http.Error(w, "could not save income", http.StatusInternalServerError)
 			return
 		}
 		// Boring rebuild: drop and recreate deductions rather than diffing rows.
-		existing, _ := d.Store.Deductions(id)
+		existing, _ := d.Store.Deductions(sess.Household.ID, id)
 		for _, ded := range existing {
-			d.Store.DeleteDeduction(ded.ID)
+			d.Store.DeleteDeduction(sess.Household.ID, ded.ID)
 		}
-		if err := saveDeductions(d, id, r); err != nil {
+		if err := saveDeductions(d, sess.Household.ID, id, r); err != nil {
 			http.Error(w, "could not save deductions", http.StatusInternalServerError)
 			return
 		}
-		src.Deductions, _ = d.Store.Deductions(id)
+		src.Deductions, _ = d.Store.Deductions(sess.Household.ID, id)
 
 		w.Header().Set("HX-Trigger", "pp:recalc")
 		d.View.Partial(w, "partials/income-card", incomeSourceView{Src: src, Calc: service.NetMonthly(src)})
@@ -192,7 +197,7 @@ func parseIncomeForm(r *http.Request, sess *auth.Session) (model.IncomeSource, s
 	return src, ""
 }
 
-func saveDeductions(d *Deps, incomeID int64, r *http.Request) error {
+func saveDeductions(d *Deps, householdID, incomeID int64, r *http.Request) error {
 	names := r.PostForm["deduction_name[]"]
 	amounts := r.PostForm["deduction_amount[]"]
 	periods := r.PostForm["deduction_period[]"]
@@ -218,7 +223,7 @@ func saveDeductions(d *Deps, incomeID int64, r *http.Request) error {
 		} else {
 			ded.AmountCents = raw
 		}
-		if _, err := d.Store.CreateDeduction(&ded); err != nil {
+		if _, err := d.Store.CreateDeduction(householdID, &ded); err != nil {
 			return err
 		}
 	}

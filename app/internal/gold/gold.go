@@ -26,14 +26,9 @@ type RateConverter interface {
 	Convert(amountCents int64, from, to string) int64
 }
 
-// Provider implements handler.GoldProvider. Precedence: a household's manual
-// override (if set) wins over the fetched cache; the cache is the fallback;
-// no price at all is an error.
-//
-// ponytail: handler.GoldProvider.PricePerGramCents takes no household ID, so
-// on a multi-household instance the manual override is read from the first
-// household only. Self-hosted PariPari is one household per instance in
-// practice; revisit if that changes.
+// Provider implements handler.GoldProvider. Precedence: the asking household's
+// manual override (if set) wins over the fetched cache; the cache is the
+// fallback; no price at all is an error.
 type Provider struct {
 	db    *store.Store
 	rates RateConverter
@@ -43,8 +38,11 @@ func NewProvider(db *store.Store, rates RateConverter) *Provider {
 	return &Provider{db: db, rates: rates}
 }
 
-func (p *Provider) PricePerGramCents(currency string) (int64, error) {
-	if cents, from, ok := p.manualOverride(); ok {
+// PricePerGramCents resolves the price for one household. householdID 0 means
+// "no household in scope" — the cached spot price only, never another
+// household's manual override.
+func (p *Provider) PricePerGramCents(householdID int64, currency string) (int64, error) {
+	if cents, from, ok := p.manualOverride(householdID); ok {
 		return p.rates.Convert(cents, from, currency), nil
 	}
 	gp, err := p.db.LatestGoldPrice()
@@ -54,12 +52,11 @@ func (p *Provider) PricePerGramCents(currency string) (int64, error) {
 	return p.rates.Convert(gp.PricePerGramCents, gp.Currency, currency), nil
 }
 
-func (p *Provider) manualOverride() (cents int64, currency string, ok bool) {
-	ids, err := p.db.HouseholdIDs()
-	if err != nil || len(ids) == 0 {
+func (p *Provider) manualOverride(householdID int64) (cents int64, currency string, ok bool) {
+	if householdID == 0 {
 		return 0, "", false
 	}
-	h, err := p.db.Household(ids[0])
+	h, err := p.db.Household(householdID)
 	if err != nil || h.ManualGoldPriceCents == nil {
 		return 0, "", false
 	}

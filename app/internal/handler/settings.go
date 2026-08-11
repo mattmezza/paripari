@@ -86,7 +86,7 @@ func buildSettingsData(d *Deps, r *http.Request) (*settingsData, error) {
 		data.GoldManualInput = plainAmount(*hh.ManualGoldPriceCents)
 	}
 	if d.Gold != nil {
-		data.EffectiveGoldPPG, _ = d.Gold.PricePerGramCents(hh.DisplayCurrency)
+		data.EffectiveGoldPPG, _ = d.Gold.PricePerGramCents(hh.ID, hh.DisplayCurrency)
 	}
 	return data, nil
 }

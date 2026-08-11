@@ -676,6 +676,95 @@
     margin: 0.625rem auto 0.25rem;
   }
 
+  /* ---- Privacy blur ----
+     One switch on <html>, restored before first paint by the head script.
+     The selector list is every place a figure lands — headline figures,
+     tabular cells, chart canvases — so nothing readable from across the room
+     survives. Click anything blurred to reveal the lot for a while. */
+  html.private :is(.figure, .tnum, td.num, .input--figure, [data-tick], canvas) {
+    filter: blur(0.35em);
+    cursor: pointer;
+    user-select: none;
+    transition: filter var(--dur-short) var(--ease-out);
+  }
+  html.private.revealed :is(.figure, .tnum, td.num, .input--figure, [data-tick], canvas) {
+    filter: none;
+    user-select: auto;
+  }
+
+  /* ---- Calculator launcher ----
+     Sits above the mobile tab bar, out of the safe area. */
+  .calc-fab {
+    position: fixed;
+    inset-inline-end: 1rem;
+    inset-block-end: calc(var(--shell-tabbar) + 1rem + env(safe-area-inset-bottom));
+    z-index: 41;
+    width: 3rem; height: 3rem;
+    display: grid; place-items: center;
+    border: 1px solid var(--color-rule);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: 0 6px 20px color-mix(in oklab, oklch(17% 0.01 240) 18%, transparent);
+    cursor: pointer;
+  }
+  @media (min-width: 48rem) {
+    .calc-fab { inset-block-end: 1rem; }
+  }
+  @media print {
+    .calc-fab, .calc-panel { display: none !important; }
+  }
+
+  /* ---- Calculator panel ----
+     Floats over the app, above the tab bar and the launcher. Deliberately not
+     modal: no backdrop, nothing behind it is blocked, so a figure on the page
+     stays readable while you do sums about it. */
+  .calc-panel {
+    position: fixed;
+    inset-inline-end: 1rem;
+    inset-block-end: calc(var(--shell-tabbar) + 4.5rem + env(safe-area-inset-bottom));
+    z-index: 41;
+    width: min(20rem, calc(100vw - 2rem));
+    max-height: 70dvh;
+    overflow-y: auto;
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: 0 10px 30px color-mix(in oklab, oklch(17% 0.01 240) 22%, transparent);
+  }
+  @media (min-width: 48rem) {
+    .calc-panel { inset-block-end: 4.5rem; }
+  }
+  /* Drag handle. touch-action:none so a touch drag moves the panel instead of
+     scrolling the page behind it. */
+  .calc-panel__grip {
+    cursor: move;
+    touch-action: none;
+    user-select: none;
+  }
+  .calc-saved {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.25rem;
+    border-block-start: 1px solid var(--color-rule);
+    padding-block-start: 0.5rem;
+  }
+  .calc-saved li {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .calc-saved li > :first-child {
+    flex: 1;
+    justify-content: flex-end;
+  }
+
   /* Wordmark — the logo. Typographic, no image asset. */
   .wordmark {
     font-family: var(--font-display);

@@ -17,16 +17,18 @@
       <button type="button" class="btn btn--sm btn--ghost" x-show="!open" @click="open = true">Edit trip</button>
     </div>
   </div>
-  <form hx-post="/trips/{{.Trip.ID}}" x-show="open" x-cloak style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end;margin-block-start:.75rem">
-    <div class="field" style="flex:2;min-width:12rem">
+  {{/* hx-target is mandatory here: without it htmx swaps the whole panel into
+       this form, which lives inside the panel — every card renders twice. */}}
+  <form hx-post="/trips/{{.Trip.ID}}" hx-target="#trip-detail-panel" hx-swap="innerHTML" x-show="open" x-cloak style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end;margin-block-start:.75rem">
+    <div class="field" style="margin:0;flex:2;min-width:12rem">
       <label class="label" for="trip-name">Name</label>
       <input class="input" id="trip-name" name="name" value="{{.Trip.Name}}" required>
     </div>
-    <div class="field" style="min-width:10rem">
+    <div class="field" style="margin:0;min-width:10rem">
       <label class="label" for="trip-date">Start date</label>
       <input class="input" id="trip-date" name="start_date" type="date" value="{{.StartDateValue}}">
     </div>
-    <div class="field" style="min-width:8rem">
+    <div class="field" style="margin:0;min-width:8rem">
       <label class="label" for="trip-months">Fund over (months)</label>
       <input class="input" id="trip-months" name="months_to_save" type="number" min="1" value="{{.Trip.MonthsToSave}}">
     </div>
@@ -88,19 +90,19 @@
   {{end}}
 
   <form hx-post="/trips/{{.Trip.ID}}/items" hx-target="#trip-detail-panel" hx-swap="innerHTML" x-show="open" x-cloak style="display:grid;gap:.625rem;grid-template-columns:2fr 1fr 1fr 1fr auto auto;align-items:flex-end;margin-block-start:1rem">
-    <div class="field">
+    <div class="field" style="margin:0">
       <label class="label" for="ti-name">Item</label>
       <input class="input" id="ti-name" name="name" placeholder="Flights EU">
     </div>
-    <div class="field">
+    <div class="field" style="margin:0">
       <label class="label" for="ti-category">Category</label>
       <select class="select" id="ti-category" name="category">{{range .Categories}}<option value="{{.}}">{{.}}</option>{{end}}</select>
     </div>
-    <div class="field">
+    <div class="field" style="margin:0">
       <label class="label" for="ti-amount">Amount</label>
       <input class="input input--figure" id="ti-amount" name="amount" inputmode="decimal" placeholder="0.00">
     </div>
-    <div class="field">
+    <div class="field" style="margin:0">
       <label class="label" for="ti-currency">Currency</label>
       <select class="select" id="ti-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
     </div>

@@ -14,8 +14,9 @@ func (s *Store) CreateCCTransaction(t *model.CCTransaction) (int64, error) {
 	return res.LastInsertId()
 }
 
-func (s *Store) DeleteCCTransaction(id int64) error {
-	_, err := s.DB.Exec(`DELETE FROM cc_transactions WHERE id = ?`, id)
+func (s *Store) DeleteCCTransaction(householdID, id int64) error {
+	_, err := s.DB.Exec(`DELETE FROM cc_transactions WHERE id = ?
+		AND account_id IN (SELECT id FROM accounts WHERE household_id = ?)`, id, householdID)
 	return err
 }
 

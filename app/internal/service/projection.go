@@ -76,6 +76,80 @@ func GoalETA(currentCents, targetCents, monthlyContributionCents int64, annualRe
 	return -1
 }
 
+// ProjectionSpec is ProjectSavings with the knobs the /projections screen
+// exposes: a slice of the start held as cash, inflation, and dated one-offs.
+type ProjectionSpec struct {
+	StartCents   int64
+	CashCents    int64 // part of StartCents kept uninvested — earns nothing
+	GoldCents    int64 // part of StartCents held as gold — grows at GoldAnnualReturn
+	MonthlyCents int64
+	AnnualReturn float64
+	// GoldAnnualReturn is gold's own nominal rate, discounted by the same
+	// inflation as everything else.
+	GoldAnnualReturn float64
+	// AnnualInflation > 0 puts the whole curve in today's money: the invested
+	// pot compounds at the real rate, cash shrinks, and the monthly
+	// contribution is assumed to keep pace with inflation.
+	AnnualInflation float64
+	Events          map[int]int64 // month index → amount spent that month
+	Months          int
+}
+
+// Projection is a curve plus the two figures the summary strip needs.
+type Projection struct {
+	Points      []Point
+	GrowthCents int64 // return credited over the horizon
+	SpentCents  int64 // total of Events actually applied
+}
+
+// Project runs the three-bucket (invested + gold + cash) simulation. Spending
+// comes out of cash first, then gold, then the invested pot — which can go
+// negative, and is meant to: a plan that runs dry should look like it.
+func Project(s ProjectionSpec) Projection {
+	months := max(s.Months, 0)
+	start := max(s.StartCents, 0)
+	// Gold is a real holding, so it claims its share of the start first; the
+	// user-typed cash slice gets clamped to whatever is left.
+	gold := float64(min(max(s.GoldCents, 0), start))
+	cash := min(float64(max(s.CashCents, 0)), float64(start)-gold)
+	invested := float64(s.StartCents) - cash - gold
+
+	i := s.AnnualInflation / 12
+	// Real rates: nominal growth discounted by inflation. Cash earns nothing
+	// nominally, so in today's money it decays at exactly the inflation rate.
+	r := (1+s.AnnualReturn/12)/(1+i) - 1
+	goldRate := (1+s.GoldAnnualReturn/12)/(1+i) - 1
+	cashRate := 1/(1+i) - 1
+
+	p := Projection{Points: make([]Point, 0, months+1)}
+	p.Points = append(p.Points, Point{0, s.StartCents})
+	for m := 1; m <= months; m++ {
+		gain := invested*r + gold*goldRate + cash*cashRate
+		p.GrowthCents += int64(gain + 0.5*sign(gain))
+		invested += invested*r + float64(s.MonthlyCents)
+		gold += gold * goldRate
+		cash += cash * cashRate
+		if out := s.Events[m]; out != 0 {
+			p.SpentCents += out
+			// Cash, then gold, then invested — invested is last because it is
+			// the only bucket allowed to go negative, so it has to be the sink.
+			take := float64(out)
+			if d := min(cash, take); d > 0 {
+				cash -= d
+				take -= d
+			}
+			if d := min(gold, take); d > 0 {
+				gold -= d
+				take -= d
+			}
+			invested -= take
+		}
+		total := cash + gold + invested
+		p.Points = append(p.Points, Point{m, int64(total + 0.5*sign(total))})
+	}
+	return p
+}
+
 // SeriesSpec describes one projection line.
 type SeriesSpec struct {
 	Name                     string

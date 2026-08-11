@@ -43,12 +43,12 @@ func seed(st *store.Store) error {
 		if err != nil {
 			return err
 		}
-		if _, err := st.CreateDeduction(&model.IncomeDeduction{
+		if _, err := st.CreateDeduction(hh.ID, &model.IncomeDeduction{
 			IncomeSourceID: id, Name: "Tax at source", AmountCents: incomes[i].GrossYearlyCents / 5, Period: "yearly",
 		}); err != nil {
 			return err
 		}
-		if _, err := st.CreateDeduction(&model.IncomeDeduction{
+		if _, err := st.CreateDeduction(hh.ID, &model.IncomeDeduction{
 			IncomeSourceID: id, Name: "Social insurance", Period: "percent", PercentBP: 530,
 		}); err != nil {
 			return err
@@ -107,7 +107,7 @@ func seed(st *store.Store) error {
 		{TripPlanID: tripID, Name: "Hotels", Category: "accommodation", AmountCents: 220_000, Currency: "CHF"},
 		{TripPlanID: tripID, Name: "Food & activities", Category: "living", AmountCents: 150_000, Currency: "CHF"},
 	} {
-		if _, err := st.CreateTripItem(&it); err != nil {
+		if _, err := st.CreateTripItem(hh.ID, &it); err != nil {
 			return err
 		}
 	}

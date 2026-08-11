@@ -58,7 +58,7 @@ func BuildInputs(d *Deps, r *http.Request) (service.Inputs, error) {
 
 	var goldPrice int64
 	if d.Gold != nil {
-		if p, err := d.Gold.PricePerGramCents(hh.DisplayCurrency); err == nil {
+		if p, err := d.Gold.PricePerGramCents(hh.ID, hh.DisplayCurrency); err == nil {
 			goldPrice = p
 		}
 	}

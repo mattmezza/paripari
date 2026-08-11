@@ -18,7 +18,7 @@ type RateConverter interface {
 
 // GoldPriceProvider matches handler.GoldProvider's shape.
 type GoldPriceProvider interface {
-	PricePerGramCents(currency string) (int64, error)
+	PricePerGramCents(householdID int64, currency string) (int64, error)
 }
 
 // Snapshotter is the net-worth-snapshot DailyJob. It also exposes
@@ -79,7 +79,7 @@ func (s *Snapshotter) SnapshotHousehold(ctx context.Context, householdID int64) 
 	var pricePerGramCHF int64
 	if len(items) > 0 {
 		// no cached/manual gold price yet: value gold as 0, don't fail the snapshot
-		pricePerGramCHF, _ = s.gold.PricePerGramCents("CHF")
+		pricePerGramCHF, _ = s.gold.PricePerGramCents(householdID, "CHF")
 	}
 
 	nw := service.ComputeNetWorth(service.Inputs{

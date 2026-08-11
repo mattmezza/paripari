@@ -16,9 +16,12 @@
 
   <div style="display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;margin-block-end:.75rem">
     {{if .StatusPill}}<span class="pill pill--{{.StatusPill}}">{{.StatusText}}</span>{{end}}
-    {{if .ETAText}}<span class="pill">ETA {{.ETAText}}</span>{{end}}
+    {{if .ETAText}}<span class="pill">{{if .DeadlineDate}}ETA {{.ETAText}}{{else}}Reaches target {{.ETAText}}{{end}}</span>{{end}}
     {{if .DeadlineDate}}<span class="pill">Due {{date .DeadlineDate}}</span>{{end}}
   </div>
+  {{if not .DeadlineDate}}
+  <p class="helper" style="margin-block-start:-.375rem;margin-block-end:.75rem">No deadline set, so there is nothing to be on track for &mdash; the date above is when the current surplus gets you there. <button type="button" class="link" style="background:none;border:0;padding:0;cursor:pointer" hx-get="/goals/{{.Goal.ID}}/edit" hx-target="#goal-card-{{.Goal.ID}}" hx-swap="outerHTML">Set one</button>.</p>
+  {{end}}
 
   <div style="display:flex;gap:.5rem">
     <button type="button" class="btn btn--sm btn--ghost" hx-get="/goals/{{.Goal.ID}}/edit"

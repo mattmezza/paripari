@@ -37,3 +37,20 @@ func TestDesignShellRenders(t *testing.T) {
 		}
 	}
 }
+
+// Every hx-post/hx-delete inside partials/trips-detail.html re-renders the
+// whole panel, so each one must say where it goes. A missing hx-target makes
+// htmx swap the panel into the element that fired the request — and every card
+// renders twice.
+func TestTripPanelMutationsNameTheirTarget(t *testing.T) {
+	b, err := os.ReadFile("../../templates/partials/trips-detail.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if (strings.Contains(line, "hx-post=") || strings.Contains(line, "hx-delete=")) &&
+			!strings.Contains(line, "hx-target=") {
+			t.Errorf("trips-detail.html: hx request without hx-target: %s", strings.TrimSpace(line))
+		}
+	}
+}

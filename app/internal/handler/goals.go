@@ -199,13 +199,29 @@ func buildGoalCardFrom(p service.GoalProgress) goalCard {
 			case p.ETAMonths < 0:
 				// status already set above
 			case !projected.After(dl):
-				c.StatusPill, c.StatusText = "positive", "On track"
+				c.StatusPill, c.StatusText = "positive", "On track"+spareText(monthsBetween(projected, dl), "to spare")
 			default:
-				c.StatusPill, c.StatusText = "attention", "Behind schedule"
+				c.StatusPill, c.StatusText = "attention", "Behind schedule"+spareText(monthsBetween(dl, projected), "late")
 			}
 		}
 	}
 	return c
+}
+
+// monthsBetween counts whole calendar months from a to b (negative if b is
+// earlier). ponytail: month granularity is all the ETA has — it is a whole
+// number of months itself.
+func monthsBetween(a, b time.Time) int {
+	return (b.Year()-a.Year())*12 + int(b.Month()) - int(a.Month())
+}
+
+// spareText renders the margin on a deadline: " · 5 mo to spare", or nothing
+// when the projection lands in the deadline's own month.
+func spareText(months int, suffix string) string {
+	if months <= 0 {
+		return ""
+	}
+	return " · " + strconv.Itoa(months) + " mo " + suffix
 }
 
 func parseGoalForm(r *http.Request, householdID int64) (model.Goal, string) {

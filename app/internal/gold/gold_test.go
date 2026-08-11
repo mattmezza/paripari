@@ -64,12 +64,13 @@ func TestPricePerGramCents_CacheFallback(t *testing.T) {
 	if err := st.PutGoldPrice(6429, "USD", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.CreateHousehold("Test"); err != nil {
+	h, err := st.CreateHousehold("Test")
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	p := NewProvider(st, identityRates{})
-	got, err := p.PricePerGramCents("USD")
+	got, err := p.PricePerGramCents(h.ID, "USD")
 	if err != nil {
 		t.Fatalf("price: %v", err)
 	}
@@ -94,7 +95,7 @@ func TestPricePerGramCents_ManualOverrideWins(t *testing.T) {
 	}
 
 	p := NewProvider(st, identityRates{})
-	got, err := p.PricePerGramCents("USD")
+	got, err := p.PricePerGramCents(h.ID, "USD")
 	if err != nil {
 		t.Fatalf("price: %v", err)
 	}
@@ -105,11 +106,12 @@ func TestPricePerGramCents_ManualOverrideWins(t *testing.T) {
 
 func TestPricePerGramCents_ErrorWhenNothingAvailable(t *testing.T) {
 	st := testStore(t)
-	if _, err := st.CreateHousehold("Test"); err != nil {
+	h, err := st.CreateHousehold("Test")
+	if err != nil {
 		t.Fatal(err)
 	}
 	p := NewProvider(st, identityRates{})
-	if _, err := p.PricePerGramCents("USD"); err == nil {
+	if _, err := p.PricePerGramCents(h.ID, "USD"); err == nil {
 		t.Fatal("expected error when no cache and no override")
 	}
 }
@@ -137,5 +139,41 @@ func TestIsFresh(t *testing.T) {
 	fresh, err = staleR.isFresh()
 	if err != nil || fresh {
 		t.Fatalf("isFresh (stale) = %v, %v, want false, nil", fresh, err)
+	}
+}
+
+func TestPricePerGramCents_OverridePerHousehold(t *testing.T) {
+	st := testStore(t)
+	if err := st.PutGoldPrice(6429, "USD", ""); err != nil {
+		t.Fatal(err)
+	}
+	set := func(name string, override *int64) int64 {
+		h, err := st.CreateHousehold(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if override != nil {
+			h.ManualGoldPriceCents = override
+			if err := st.UpdateHouseholdSettings(h); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return h.ID
+	}
+	first, second := int64(1111), int64(2222)
+	a, b, c := set("A", &first), set("B", &second), set("C", nil)
+
+	p := NewProvider(st, identityRates{})
+	for _, tc := range []struct {
+		hh   int64
+		want int64
+	}{{a, 1111}, {b, 2222}, {c, 6429}, {0, 6429}} {
+		got, err := p.PricePerGramCents(tc.hh, "USD")
+		if err != nil {
+			t.Fatalf("household %d: %v", tc.hh, err)
+		}
+		if got != tc.want {
+			t.Errorf("household %d: got %d, want %d", tc.hh, got, tc.want)
+		}
 	}
 }

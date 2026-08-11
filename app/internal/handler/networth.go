@@ -200,7 +200,7 @@ func buildNetWorthData(d *Deps, r *http.Request, sess *auth.Session) (*nwData, e
 	cur := netWorthCurrency(r, &in.Household)
 	in.Display = cur
 	if cur != in.Household.DisplayCurrency && d.Gold != nil {
-		if p, err := d.Gold.PricePerGramCents(cur); err == nil {
+		if p, err := d.Gold.PricePerGramCents(in.Household.ID, cur); err == nil {
 			in.GoldPricePerGramCents = p
 		}
 	}

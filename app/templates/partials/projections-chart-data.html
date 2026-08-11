@@ -34,10 +34,10 @@
     <div>
       <dt class="label" style="margin:0">Starting balance · <span class="tnum">{{money .StartCents .Currency}}</span></dt>
       <dd style="margin:.125rem 0 0;color:var(--color-muted)">
-        Your whole net worth: every account balance ({{money .LiquidCents .Currency}}) — checking, savings, investment, pension, buffers and envelopes —
-        {{if gt .GoldCents 0}}plus gold ({{money .GoldCents .Currency}}){{else}}plus gold (none recorded){{end}},
-        {{if gt .PropertyCents 0}}plus property ({{money .PropertyCents .Currency}}){{else}}plus property (none recorded){{end}}.
-        Nothing is left out, so property and gold are projected as if they grew at the same rate as the rest.
+        Only what you ticked above: account balances ({{money .LiquidCents .Currency}}) — checking, savings, investment, pension, buffers and envelopes —
+        {{if gt .GoldCents 0}}plus gold ({{money .GoldCents .Currency}}){{else}}plus gold (none counted){{end}},
+        {{if gt .PropertyCents 0}}plus property ({{money .PropertyCents .Currency}}){{else}}plus property (none counted){{end}}.
+        Each piece grows at its own rate: {{if gt .GoldCents 0}}gold at {{pct .GoldRate}}, {{end}}{{if gt .CashCents 0}}the {{money .CashCents .Currency}} you keep as cash at nothing, {{end}}everything else at {{pct .Rate}}.
       </dd>
     </div>
     <div>
@@ -49,15 +49,40 @@
     <div>
       <dt class="label" style="margin:0">Return · <span class="tnum">{{pct .Rate}} a year</span></dt>
       <dd style="margin:.125rem 0 0;color:var(--color-muted)">
-        Applied to the entire projected balance, compounded monthly at {{pct .Rate}}÷12. It is an assumption about how your money grows, not a share of your assets being spent or invested.
+        Applied to the invested part of the balance, compounded monthly at {{pct .Rate}}÷12. It is an assumption about how your money grows, not a share of your assets being spent or invested.
       </dd>
     </div>
+    {{if gt .GoldCents 0}}
+    <div>
+      <dt class="label" style="margin:0">Gold · <span class="tnum">{{pct .GoldRate}} a year</span></dt>
+      <dd style="margin:.125rem 0 0;color:var(--color-muted)">
+        Your {{money .GoldCents .Currency}} of gold compounds at its own rate, monthly, separate from the return above. Untick Gold to leave it out entirely.
+      </dd>
+    </div>
+    {{end}}
     <div>
       <dt class="label" style="margin:0">Horizon · <span class="tnum">{{.HorizonYears}} years</span></dt>
       <dd style="margin:.125rem 0 0;color:var(--color-muted)">
-        Compounded month by month to year {{.HorizonYears}}. No inflation, taxes, raises or one-off events are modelled.{{if .Goals}} Dashed lines on the chart mark each goal's target amount.{{end}}
+        Compounded month by month to year {{.HorizonYears}}. No taxes or raises are modelled.{{if .Goals}} Dashed lines on the chart mark each goal's target amount.{{end}}
       </dd>
     </div>
+    {{if gt .Inflation 0.0}}
+    <div>
+      <dt class="label" style="margin:0">Inflation · <span class="tnum">{{pct .Inflation}} a year</span></dt>
+      <dd style="margin:.125rem 0 0;color:var(--color-muted)">
+        Every figure is in today's money: the pot compounds at the real rate ({{pct .Rate}} minus inflation) and your monthly contribution is assumed to keep pace with prices.
+      </dd>
+    </div>
+    {{end}}
+    {{if or (gt .OneOffCents 0) (gt .GoalSpendCents 0)}}
+    <div>
+      <dt class="label" style="margin:0">Money spent along the way · <span class="tnum">{{money .SpentCents .Currency}}</span></dt>
+      <dd style="margin:.125rem 0 0;color:var(--color-muted)">
+        {{if gt .OneOffCents 0}}{{money .OneOffCents .Currency}} of one-off expenses{{end}}{{if and (gt .OneOffCents 0) (gt .GoalSpendCents 0)}}, plus {{end}}{{if gt .GoalSpendCents 0}}{{money .GoalSpendCents .Currency}} of goals cashed in when they are reached{{end}}.
+        Each is taken out of the cash slice first{{if gt .GoldCents 0}}, then gold{{end}}, then out of the invested pot.
+      </dd>
+    </div>
+    {{end}}
   </dl>
   {{if le .SurplusCents 0}}
   <p style="margin-block-start:.75rem;padding:.625rem .75rem;border-radius:var(--radius-sm);background:var(--color-warning-soft);color:var(--color-warning-ink);font-size:.8125rem">

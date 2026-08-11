@@ -36,6 +36,8 @@ type PartnerCashflow struct {
 	Name                    string
 	ShareRatio              float64
 	NetIncomeCents          int64
+	GrossIncomeCents        int64 // gross yearly ÷ 12, before deductions
+	DeductionsCents         int64 // GrossIncomeCents − NetIncomeCents
 	FixedIncomeCents        int64
 	VariableIncomeCents     int64
 	PersonalExpensesCents   int64 // personal, non-savings
@@ -50,6 +52,12 @@ type PartnerCashflow struct {
 	TotalSavingsCents int64
 }
 
+// DeductionRateBP is deductions as basis points of gross (5.3% -> 530), for the
+// pct100 template func.
+func (p PartnerCashflow) DeductionRateBP() int64 {
+	return rateBP(p.DeductionsCents, p.GrossIncomeCents)
+}
+
 // MonthlyOverview is what the dashboard renders directly.
 type MonthlyOverview struct {
 	Currency string
@@ -61,15 +69,22 @@ type MonthlyOverview struct {
 	PersonalExpensesCents int64 // non-savings personal, both partners
 	PersonalSavingsCents  int64
 
-	TotalIncomeCents   int64
-	TotalExpensesCents int64 // everything, savings included
-	TotalSavingsCents  int64
-	AvailableCents     int64
+	TotalIncomeCents      int64 // net, both partners
+	TotalGrossIncomeCents int64
+	TotalDeductionsCents  int64
+	TotalExpensesCents    int64 // everything, savings included
+	TotalSavingsCents     int64
+	AvailableCents        int64
 	// SurplusCents is income minus non-savings expenses: the money actually
 	// available to fund goals and grow net worth (deliberate savings plus
 	// whatever is left over). Negative means the household is eating into its
 	// savings. Every projection here is driven by this figure.
 	SurplusCents int64
+}
+
+// DeductionRateBP is household deductions as basis points of gross.
+func (o MonthlyOverview) DeductionRateBP() int64 {
+	return rateBP(o.TotalDeductionsCents, o.TotalGrossIncomeCents)
 }
 
 // BuildOverview computes the monthly picture for the household.
@@ -86,6 +101,8 @@ func BuildOverview(in Inputs) MonthlyOverview {
 		p.FixedIncomeCents = inc.FixedMonthlyCents
 		p.VariableIncomeCents = inc.VariableMonthlyCents
 		p.NetIncomeCents = inc.TotalMonthlyCents
+		p.GrossIncomeCents = inc.GrossMonthlyCents
+		p.DeductionsCents = inc.DeductionsMonthlyCents
 	}
 
 	for _, e := range in.Expenses {
@@ -125,6 +142,8 @@ func BuildOverview(in Inputs) MonthlyOverview {
 	}
 
 	ov.TotalIncomeCents = ov.A.NetIncomeCents + ov.B.NetIncomeCents
+	ov.TotalGrossIncomeCents = ov.A.GrossIncomeCents + ov.B.GrossIncomeCents
+	ov.TotalDeductionsCents = ov.A.DeductionsCents + ov.B.DeductionsCents
 	ov.TotalExpensesCents = ov.A.TotalOutCents + ov.B.TotalOutCents
 	ov.TotalSavingsCents = ov.A.TotalSavingsCents + ov.B.TotalSavingsCents
 	ov.AvailableCents = ov.A.AvailableCents + ov.B.AvailableCents

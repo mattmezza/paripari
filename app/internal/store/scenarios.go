@@ -32,7 +32,7 @@ func (s *Store) Scenario(householdID, id int64) (*model.Scenario, error) {
 	if err != nil {
 		return nil, mapNoRows(err)
 	}
-	sc.Changes, err = s.ScenarioChanges(sc.ID)
+	sc.Changes, err = s.ScenarioChanges(householdID, sc.ID)
 	return &sc, err
 }
 
@@ -56,15 +56,20 @@ func (s *Store) Scenarios(householdID int64) ([]model.Scenario, error) {
 		return nil, err
 	}
 	for i := range out {
-		if out[i].Changes, err = s.ScenarioChanges(out[i].ID); err != nil {
+		if out[i].Changes, err = s.ScenarioChanges(householdID, out[i].ID); err != nil {
 			return nil, err
 		}
 	}
 	return out, nil
 }
 
-func (s *Store) ScenarioChanges(scenarioID int64) ([]model.ScenarioChange, error) {
-	rows, err := s.DB.Query(`SELECT `+scenarioChangeCols+` FROM scenario_changes WHERE scenario_id = ? ORDER BY id`, scenarioID)
+// ownedScenario is the tenant predicate for scenario_changes: the child table
+// has no household_id, so scope it through its parent scenario.
+const ownedScenario = ` AND scenario_id IN (SELECT id FROM scenarios WHERE household_id = ?)`
+
+func (s *Store) ScenarioChanges(householdID, scenarioID int64) ([]model.ScenarioChange, error) {
+	rows, err := s.DB.Query(`SELECT `+scenarioChangeCols+` FROM scenario_changes WHERE scenario_id = ?`+ownedScenario+
+		` ORDER BY id`, scenarioID, householdID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,18 +86,22 @@ func (s *Store) ScenarioChanges(scenarioID int64) ([]model.ScenarioChange, error
 	return out, rows.Err()
 }
 
-func (s *Store) CreateScenarioChange(c *model.ScenarioChange) (int64, error) {
+func (s *Store) CreateScenarioChange(householdID int64, c *model.ScenarioChange) (int64, error) {
 	res, err := s.DB.Exec(`INSERT INTO scenario_changes
 		(scenario_id, change_type, target_id, label, value_cents, value_num, value_text, currency)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.ScenarioID, c.ChangeType, c.TargetID, c.Label, c.ValueCents, c.ValueNum, c.ValueText, c.Currency)
+		SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM scenarios WHERE id = ? AND household_id = ?)`,
+		c.ScenarioID, c.ChangeType, c.TargetID, c.Label, c.ValueCents, c.ValueNum, c.ValueText, c.Currency,
+		c.ScenarioID, householdID)
 	if err != nil {
 		return 0, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return 0, ErrNotFound
 	}
 	return res.LastInsertId()
 }
 
-func (s *Store) DeleteScenarioChange(id int64) error {
-	_, err := s.DB.Exec(`DELETE FROM scenario_changes WHERE id = ?`, id)
+func (s *Store) DeleteScenarioChange(householdID, id int64) error {
+	_, err := s.DB.Exec(`DELETE FROM scenario_changes WHERE id = ?`+ownedScenario, id, householdID)
 	return err
 }

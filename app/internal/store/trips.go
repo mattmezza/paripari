@@ -31,7 +31,7 @@ func (s *Store) Trip(householdID, id int64) (*model.TripPlan, error) {
 	if err != nil {
 		return nil, mapNoRows(err)
 	}
-	t.Items, err = s.TripItems(t.ID)
+	t.Items, err = s.TripItems(householdID, t.ID)
 	return &t, err
 }
 
@@ -55,16 +55,20 @@ func (s *Store) Trips(householdID int64) ([]model.TripPlan, error) {
 		return nil, err
 	}
 	for i := range out {
-		if out[i].Items, err = s.TripItems(out[i].ID); err != nil {
+		if out[i].Items, err = s.TripItems(householdID, out[i].ID); err != nil {
 			return nil, err
 		}
 	}
 	return out, nil
 }
 
-func (s *Store) TripItems(tripID int64) ([]model.TripItem, error) {
+// ownedTrip is the tenant predicate for trip_items: the child table has no
+// household_id, so scope it through its parent trip plan.
+const ownedTrip = ` AND trip_plan_id IN (SELECT id FROM trip_plans WHERE household_id = ?)`
+
+func (s *Store) TripItems(householdID, tripID int64) ([]model.TripItem, error) {
 	rows, err := s.DB.Query(`SELECT id, trip_plan_id, name, category, amount_cents, currency
-		FROM trip_items WHERE trip_plan_id = ? ORDER BY id`, tripID)
+		FROM trip_items WHERE trip_plan_id = ?`+ownedTrip+` ORDER BY id`, tripID, householdID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,22 +84,26 @@ func (s *Store) TripItems(tripID int64) ([]model.TripItem, error) {
 	return out, rows.Err()
 }
 
-func (s *Store) CreateTripItem(it *model.TripItem) (int64, error) {
+func (s *Store) CreateTripItem(householdID int64, it *model.TripItem) (int64, error) {
 	res, err := s.DB.Exec(`INSERT INTO trip_items (trip_plan_id, name, category, amount_cents, currency)
-		VALUES (?, ?, ?, ?, ?)`, it.TripPlanID, it.Name, it.Category, it.AmountCents, it.Currency)
+		SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM trip_plans WHERE id = ? AND household_id = ?)`,
+		it.TripPlanID, it.Name, it.Category, it.AmountCents, it.Currency, it.TripPlanID, householdID)
 	if err != nil {
 		return 0, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return 0, ErrNotFound
 	}
 	return res.LastInsertId()
 }
 
-func (s *Store) UpdateTripItem(it *model.TripItem) error {
-	_, err := s.DB.Exec(`UPDATE trip_items SET name = ?, category = ?, amount_cents = ?, currency = ? WHERE id = ?`,
-		it.Name, it.Category, it.AmountCents, it.Currency, it.ID)
+func (s *Store) UpdateTripItem(householdID int64, it *model.TripItem) error {
+	_, err := s.DB.Exec(`UPDATE trip_items SET name = ?, category = ?, amount_cents = ?, currency = ?
+		WHERE id = ?`+ownedTrip, it.Name, it.Category, it.AmountCents, it.Currency, it.ID, householdID)
 	return err
 }
 
-func (s *Store) DeleteTripItem(id int64) error {
-	_, err := s.DB.Exec(`DELETE FROM trip_items WHERE id = ?`, id)
+func (s *Store) DeleteTripItem(householdID, id int64) error {
+	_, err := s.DB.Exec(`DELETE FROM trip_items WHERE id = ?`+ownedTrip, id, householdID)
 	return err
 }

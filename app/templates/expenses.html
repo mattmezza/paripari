@@ -1,7 +1,10 @@
 {{define "content"}}
 {{$list := .Data.List}}
 <h1 style="margin-block-end:.25rem">Expenses</h1>
-<p class="helper" style="margin-block-end:.75rem">Every amount on this page is <strong>per month</strong>. Common expenses are split by your household method; each one can name the account it is paid from.</p>
+<p class="helper" style="margin-block-end:.75rem">Every amount on this page is <strong>per month</strong>. Common expenses are split by your household method; each one can name the account it is paid from.
+  In the bar at the bottom: <strong>left to spend</strong> is net income minus everything out, savings included;
+  <strong>common</strong> is the household total before splitting, with each partner's personal total beside it;
+  <strong>pays out</strong> is one partner's personal expenses plus their share of the common ones.</p>
 
 <div style="display:flex;gap:.5rem;margin-block-end:1rem" role="tablist" aria-label="Filter expenses">
   <a href="/expenses" class="btn btn--sm {{if eq $list.Filter "all"}}btn--primary{{end}}">All</a>

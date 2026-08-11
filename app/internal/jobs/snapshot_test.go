@@ -15,7 +15,7 @@ func (identityRates) Convert(cents int64, _, _ string) int64 { return cents }
 
 type fixedGold struct{ cents int64 }
 
-func (f fixedGold) PricePerGramCents(string) (int64, error) { return f.cents, nil }
+func (f fixedGold) PricePerGramCents(int64, string) (int64, error) { return f.cents, nil }
 
 func TestSnapshotHousehold(t *testing.T) {
 	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))

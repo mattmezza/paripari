@@ -26,6 +26,94 @@
     applyTheme(next);
   });
 
+  /* ── Privacy blur ───────────────────────────────────────────────────────
+     `.private` on <html> blurs every figure (CSS owns the selector list);
+     `.revealed` lifts it for pp-private-timer seconds. The blocking head
+     script already stamped `.private`, so there is no flash of amounts.
+     Preferences are per-device on purpose — this is about who is standing
+     behind *this* screen — so they live in localStorage, not the household. */
+  var revealTimer = null;
+
+  function ls(key, fallback) {
+    try { var v = localStorage.getItem(key); return v === null ? fallback : v; }
+    catch (_) { return fallback; }
+  }
+  function lsSet(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
+
+  function syncPrivateButtons() {
+    var on = document.documentElement.classList.contains("private");
+    document.querySelectorAll("[data-privacy-toggle]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(on));
+    });
+  }
+
+  function conceal() {
+    clearTimeout(revealTimer);
+    document.documentElement.classList.remove("revealed");
+  }
+
+  function reveal() {
+    clearTimeout(revealTimer);
+    document.documentElement.classList.add("revealed");
+    var secs = parseInt(ls("pp-private-timer", "10"), 10);
+    // 0 means "stay revealed until I say otherwise".
+    if (secs > 0) revealTimer = setTimeout(conceal, secs * 1000);
+  }
+
+  function setPrivate(on) {
+    document.documentElement.classList.toggle("private", on);
+    conceal();
+    lsSet("pp-private", on ? "1" : "0");
+    syncPrivateButtons();
+  }
+
+  window.ppPrivacy = { set: setPrivate, reveal: reveal, conceal: conceal };
+  syncPrivateButtons();
+
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-privacy-toggle]")) {
+      setPrivate(!document.documentElement.classList.contains("private"));
+      return;
+    }
+    if (!document.documentElement.classList.contains("private")) return;
+    // Clicking a blurred figure reveals everything; clicking again hides it.
+    if (e.target.closest(".figure, .tnum, td.num, .input--figure, [data-tick], canvas")) {
+      if (document.documentElement.classList.contains("revealed")) conceal();
+      else reveal();
+    }
+  });
+
+  /* ── Shake to reveal (mobile) ───────────────────────────────────────────
+     ponytail: a plain magnitude threshold with a cooldown, no smoothing or
+     axis analysis. iOS needs an explicit permission grant, which settings
+     asks for from a real tap. */
+  var lastShake = 0;
+  window.ppShake = function (enabled) {
+    lsSet("pp-shake", enabled ? "1" : "0");
+    if (!enabled || !window.DeviceMotionEvent) return Promise.resolve(enabled);
+    var ask = DeviceMotionEvent.requestPermission
+      ? DeviceMotionEvent.requestPermission()
+      : Promise.resolve("granted");
+    return ask.then(function (state) {
+      if (state !== "granted") { lsSet("pp-shake", "0"); return false; }
+      return true;
+    }).catch(function () { lsSet("pp-shake", "0"); return false; });
+  };
+
+  window.addEventListener("devicemotion", function (e) {
+    if (ls("pp-shake", "0") !== "1") return;
+    var a = e.accelerationIncludingGravity;
+    if (!a) return;
+    var force = Math.abs(a.x || 0) + Math.abs(a.y || 0) + Math.abs(a.z || 0);
+    if (force < 35) return;
+    var now = e.timeStamp || 0;
+    if (now - lastShake < 1200) return;
+    lastShake = now;
+    if (!document.documentElement.classList.contains("private")) setPrivate(true);
+    else if (document.documentElement.classList.contains("revealed")) conceal();
+    else reveal();
+  });
+
   /* ── Number tick on recalc ──────────────────────────────────────────────
      Handlers fire `pp:recalc` (HX-Trigger response header) after any change
      that moves money. Figures inside the swapped region pulse once. */
@@ -42,6 +130,7 @@
   document.body.addEventListener("pp:recalc", function (e) { tick(e.target); });
   document.body.addEventListener("htmx:afterSwap", function (e) {
     if (e.detail.target.hasAttribute("data-tick-on-swap")) tick(e.detail.target);
+    syncPrivateButtons(); // boosted navigation brings a fresh, unsynced nav
   });
 
   /* ── Validation errors (422) ────────────────────────────────────────────

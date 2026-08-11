@@ -64,8 +64,8 @@ func (s *Store) UpdateUserPassword(id int64, hash string) error {
 	return err
 }
 
-func (s *Store) UpdateUserName(id int64, name string) error {
-	_, err := s.DB.Exec(`UPDATE users SET name = ? WHERE id = ?`, name, id)
+func (s *Store) UpdateUserName(householdID, id int64, name string) error {
+	_, err := s.DB.Exec(`UPDATE users SET name = ? WHERE id = ? AND household_id = ?`, name, id, householdID)
 	return err
 }
 

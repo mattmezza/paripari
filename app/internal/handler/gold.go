@@ -72,7 +72,7 @@ func registerGold(mux *http.ServeMux, d *Deps) {
 			http.NotFound(w, r)
 			return
 		}
-		price := goldPriceOrZero(d, sess.Household.DisplayCurrency)
+		price := goldPriceOrZero(d, sess.Household.ID, sess.Household.DisplayCurrency)
 		d.View.Partial(w, "partials/gold-item-row", goldItemRow{
 			GoldItem: *item, Currency: sess.Household.DisplayCurrency,
 			ValueCents: service.GoldValue(*item, price),
@@ -135,11 +135,11 @@ func renderGoldMain(d *Deps, w http.ResponseWriter, r *http.Request, sess *auth.
 
 // goldPriceOrZero resolves today's 24K gram price, tolerating "no price yet"
 // (items just value at zero rather than failing the whole page).
-func goldPriceOrZero(d *Deps, currency string) int64 {
+func goldPriceOrZero(d *Deps, householdID int64, currency string) int64 {
 	if d.Gold == nil {
 		return 0
 	}
-	p, err := d.Gold.PricePerGramCents(currency)
+	p, err := d.Gold.PricePerGramCents(householdID, currency)
 	if err != nil {
 		return 0
 	}
@@ -155,7 +155,7 @@ func buildGoldData(d *Deps, sess *auth.Session) (*goldData, error) {
 
 	gd := &goldData{Currency: cur, CSRF: sess.Token}
 	if d.Gold != nil {
-		if p, err := d.Gold.PricePerGramCents(cur); err != nil {
+		if p, err := d.Gold.PricePerGramCents(sess.Household.ID, cur); err != nil {
 			gd.PriceErr = "Couldn't reach the gold price provider. Set a manual override in settings."
 		} else {
 			gd.PricePerGramCents = p

@@ -17,11 +17,11 @@
   <div class="card" style="margin-block-end:1rem" x-show="open" x-cloak>
     <div class="card__head"><h3 class="card__title">Plan a trip</h3></div>
     <form hx-post="/trips" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
-      <div class="field" style="flex:2;min-width:12rem">
+      <div class="field" style="margin:0;flex:2;min-width:12rem">
         <label class="label" for="new-trip-name">Name</label>
         <input class="input" id="new-trip-name" name="name" placeholder="e.g. Portugal, October" required>
       </div>
-      <div class="field" style="flex:1;min-width:10rem">
+      <div class="field" style="margin:0;flex:1;min-width:10rem">
         <label class="label" for="new-trip-date">Start date</label>
         <input class="input" id="new-trip-date" name="start_date" type="date">
       </div>

@@ -18,6 +18,11 @@ import (
 )
 
 func newServer(t *testing.T) http.Handler {
+	h, _ := newServerStore(t)
+	return h
+}
+
+func newServerStore(t *testing.T) (http.Handler, *store.Store) {
 	t.Helper()
 	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -41,7 +46,7 @@ func newServer(t *testing.T) http.Handler {
 	return handler.New(&handler.Deps{
 		Store: st, View: v, Auth: auth.NewManager(st, false),
 		Rates: view.Identity, BaseURL: "http://test", Static: fs.FS(static.FS),
-	})
+	}), st
 }
 
 func post(t *testing.T, h http.Handler, path string, form url.Values, cookie *http.Cookie) *httptest.ResponseRecorder {

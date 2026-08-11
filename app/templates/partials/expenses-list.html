@@ -9,7 +9,7 @@
   {{end}}
 
   {{$root := .}}
-  {{range .Groups}}
+  {{range $i, $g := .Groups}}
   <div class="card">
     <div class="card__head">
       <div>
@@ -43,8 +43,11 @@
       {{end}}
     </div>
 
+    {{/* Each group gets its own slot so the form opens inside the card that
+         asked for it, not at the bottom of the page. */}}
+    <div id="expenses-add-slot-{{$i}}" style="margin-block-start:.75rem"></div>
     <button type="button" class="btn btn--sm btn--ghost" style="margin-block-start:.75rem"
-      hx-get="/expenses/new?category={{.Category}}&subcategory={{.Subcategory}}" hx-target="#expenses-add-slot" hx-swap="innerHTML">
+      hx-get="/expenses/new?category={{.Category}}&subcategory={{.Subcategory}}" hx-target="#expenses-add-slot-{{$i}}" hx-swap="innerHTML">
       + Add to {{if .Subcategory}}{{.Subcategory}}{{else}}this group{{end}}
     </button>
   </div>

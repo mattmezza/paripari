@@ -179,3 +179,46 @@ func TestPartnerIncomesNilRatesIsIdentity(t *testing.T) {
 		t.Errorf("nil rates should pass amounts through, got %d", got[1].TotalMonthlyCents)
 	}
 }
+
+// Gross and deductions ride alongside net so screens can say what "net" means.
+// Deductions are defined as gross − net, so the three always reconcile.
+func TestPartnerIncomesGrossAndDeductions(t *testing.T) {
+	// CHF 120'000 gross: 5.30% of gross (636'000) plus CHF 1'000/mo (1'200'000)
+	// = 1'836'000 deducted a year, so 153'000/mo against 1'000'000/mo gross.
+	salary := income(1, 7, "fixed", 12000000, 12, "CHF", dedPct("AHV", 530), ded("tax", 100000, "monthly"))
+	// CHF 60'000 with nothing deducted: net is gross.
+	side := income(2, 7, "variable", 6000000, 12, "CHF")
+
+	tests := []struct {
+		name                        string
+		srcs                        []model.IncomeSource
+		wantGross, wantDed, wantNet int64
+		wantRateBP                  int64
+	}{
+		{"fixed and percentage deduction stack", []model.IncomeSource{salary}, 1000000, 153000, 847000, 1530},
+		{"no deductions: gross equals net", []model.IncomeSource{side}, 500000, 0, 500000, 0},
+		{"both sources", []model.IncomeSource{salary, side}, 1500000, 153000, 1347000, 1020},
+		{"no income at all", nil, 0, 0, 0, 0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			p := PartnerIncomes(tc.srcs, nil, "CHF")[7]
+			if p.GrossMonthlyCents != tc.wantGross {
+				t.Errorf("gross = %d, want %d", p.GrossMonthlyCents, tc.wantGross)
+			}
+			if p.DeductionsMonthlyCents != tc.wantDed {
+				t.Errorf("deductions = %d, want %d", p.DeductionsMonthlyCents, tc.wantDed)
+			}
+			if p.TotalMonthlyCents != tc.wantNet {
+				t.Errorf("net = %d, want %d", p.TotalMonthlyCents, tc.wantNet)
+			}
+			if p.GrossMonthlyCents-p.DeductionsMonthlyCents != p.TotalMonthlyCents {
+				t.Errorf("gross - deductions != net: %d - %d != %d",
+					p.GrossMonthlyCents, p.DeductionsMonthlyCents, p.TotalMonthlyCents)
+			}
+			if got := p.DeductionRateBP(); got != tc.wantRateBP {
+				t.Errorf("rate = %d bp, want %d", got, tc.wantRateBP)
+			}
+		})
+	}
+}

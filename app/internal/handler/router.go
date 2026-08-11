@@ -14,8 +14,9 @@ import (
 // GoldProvider returns the current gold spot price. The gold agent supplies the
 // real implementation.
 type GoldProvider interface {
-	// PricePerGramCents is the 24K spot price per gram in the given currency.
-	PricePerGramCents(currency string) (int64, error)
+	// PricePerGramCents is the 24K spot price per gram in the given currency,
+	// for the given household (its manual override wins over the cache).
+	PricePerGramCents(householdID int64, currency string) (int64, error)
 }
 
 // Deps is what every handler section gets. Fields are interfaces or concrete

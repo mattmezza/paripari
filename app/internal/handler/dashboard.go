@@ -15,11 +15,8 @@ type dashboardData struct {
 	HasPartner       bool
 	Overview         service.MonthlyOverview
 	NetWorth         service.NetWorth
-	Goals            []service.GoalProgress
+	Goals            []goalCard
 	TransfersChanged bool
-	// GrossAsNetA/B: this partner has an income source with no deductions
-	// recorded, so their "net income" is really gross.
-	GrossAsNetA, GrossAsNetB bool
 }
 
 // registerDashboard mounts the dashboard section: the monthly picture per
@@ -39,20 +36,12 @@ func registerDashboard(mux *http.ServeMux, d *Deps) {
 			HasPartner:  in.PartnerB.ID != 0,
 			Overview:    ov,
 			NetWorth:    service.ComputeNetWorth(in),
-			Goals:       service.GoalProgresses(in, ov),
+		}
+		// Same cards as /goals: percent, on-track state and ETA come precomputed.
+		for _, p := range service.GoalProgresses(in, ov) {
+			data.Goals = append(data.Goals, buildGoalCardFrom(p))
 		}
 		data.Empty = !data.HasIncomes && !data.HasExpenses
-		for _, src := range in.Incomes {
-			if len(src.Deductions) > 0 {
-				continue
-			}
-			switch src.UserID {
-			case in.PartnerA.ID:
-				data.GrossAsNetA = true
-			case in.PartnerB.ID:
-				data.GrossAsNetB = true
-			}
-		}
 
 		if last, err := d.Store.LastTransferConfirmation(in.Household.ID); err == nil {
 			plan := service.BuildTransfers(in, ov)

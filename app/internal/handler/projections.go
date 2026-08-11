@@ -40,7 +40,11 @@ func registerProjections(mux *http.ServeMux, d *Deps) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("HX-Trigger", "pp:projection-updated")
+		// After-Swap, not plain HX-Trigger: htmx fires HX-Trigger the moment the
+		// response headers are read, before the swap replaces #projection-json —
+		// so the chart's refresh() would read the *previous* payload. Firing
+		// after the swap means the JSON script tag is already up to date.
+		w.Header().Set("HX-Trigger-After-Swap", "pp:projection-updated")
 		d.View.Partial(w, "partials/projections-chart-data", projectionsData(d, in, r))
 	})
 }
@@ -62,11 +66,105 @@ type projectionsViewData struct {
 	ContributedCents    int64
 	GrowthCents         int64
 
+	GoldRate       float64     // gold's own assumed annual return
+	StartItems     []startItem // the pickable pieces of the starting balance
+	CashCents      int64
+	CashStr        string
+	Inflation      float64
+	SpendGoals     bool
+	GoalSpendCents int64 // goal targets that land inside the horizon
+	OneOffs        []oneOff
+	OneOffCents    int64
+	SpentCents     int64 // OneOffCents + GoalSpendCents, for the summary line
+
 	Goals []service.GoalProgress
 
 	Scenarios   []model.Scenario
 	SelectedIDs map[int64]bool
 	Payload     projPayload
+}
+
+// startItem is one line of the starting balance the user can untick. Token is
+// what travels in the `exclude` query param.
+type startItem struct {
+	Token    string
+	Name     string
+	Cents    int64
+	Included bool
+}
+
+// oneOff is a dated lump-sum expense. At is a month index from today.
+type oneOff struct {
+	At        int
+	Cents     int64
+	AmountStr string
+}
+
+// projectionKnobs is everything the query string says about the projection
+// beyond horizon and rate.
+type projectionKnobs struct {
+	exclude    map[string]bool
+	cashCents  int64
+	inflation  float64
+	spendGoals bool
+	oneOffs    []oneOff
+}
+
+func parseProjectionKnobs(r *http.Request) projectionKnobs {
+	q := r.URL.Query()
+	k := projectionKnobs{exclude: map[string]bool{}, spendGoals: q.Get("goals") == "1"}
+	for _, t := range q["exclude"] {
+		k.exclude[t] = true
+	}
+	k.cashCents, _ = ParseAmount(q.Get("cash")) // empty or junk → 0, which is the default anyway
+	if f, err := strconv.ParseFloat(q.Get("inflation"), 64); err == nil && f >= 0 && f <= 0.1 {
+		k.inflation = f
+	}
+	// Two parallel repeated params, paired by position — the rows are emitted
+	// together by the form, so index i of one always matches index i of the other.
+	ats, amts := q["oneoff_at"], q["oneoff_amount"]
+	for i, at := range ats {
+		if i >= len(amts) {
+			break
+		}
+		months := atoiDefault(at, 0)
+		cents, err := ParseAmount(amts[i])
+		if err != nil || months < 1 || cents <= 0 {
+			continue
+		}
+		k.oneOffs = append(k.oneOffs, oneOff{At: months, Cents: cents, AmountStr: CentsToStr(cents)})
+	}
+	return k
+}
+
+// applyExclusions drops the unticked pieces of the starting balance and reports
+// what was on offer. Excluding an account also takes it out of the goal pot —
+// money you told us to ignore can't be funding a goal either.
+func applyExclusions(in service.Inputs, ex map[string]bool) (service.Inputs, []startItem) {
+	var items []startItem
+	accounts := in.Accounts[:0:0]
+	for _, a := range in.Accounts {
+		tok := "a" + strconv.FormatInt(a.ID, 10)
+		items = append(items, startItem{Token: tok, Name: a.Name, Cents: convertRate(in.Rates, a.BalanceCents, a.Currency, in.Display), Included: !ex[tok]})
+		if !ex[tok] {
+			accounts = append(accounts, a)
+		}
+	}
+	nw := service.ComputeNetWorth(in)
+	if nw.AlternativeCents > 0 {
+		items = append(items, startItem{Token: "gold", Name: "Gold", Cents: nw.AlternativeCents, Included: !ex["gold"]})
+	}
+	if nw.RealEstateCents > 0 {
+		items = append(items, startItem{Token: "property", Name: "Property", Cents: nw.RealEstateCents, Included: !ex["property"]})
+	}
+	in.Accounts = accounts
+	if ex["gold"] {
+		in.Gold = nil
+	}
+	if ex["property"] {
+		in.Assets = nil
+	}
+	return in, items
 }
 
 func projectionsData(d *Deps, in service.Inputs, r *http.Request) *projectionsViewData {
@@ -76,28 +174,74 @@ func projectionsData(d *Deps, in service.Inputs, r *http.Request) *projectionsVi
 	}
 	rate := in.AnnualReturnRate
 	if v := r.URL.Query().Get("rate"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 0.08 {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= -0.10 && f <= 0.10 {
 			rate = f
 		}
 	}
 	in.AnnualReturnRate = rate
+	goldRate := 0.07
+	if v := r.URL.Query().Get("gold_rate"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 0.15 {
+			goldRate = f
+		}
+	}
+
+	k := parseProjectionKnobs(r)
+	in, startItems := applyExclusions(in, k.exclude)
 
 	nw := service.ComputeNetWorth(in)
 	ov := service.BuildOverview(in)
 	goals := service.GoalProgresses(in, ov)
 
 	months := horizon * 12
-	pts := service.ProjectSavings(nw.TotalCents, ov.SurplusCents, rate, months)
+	events := map[int]int64{}
+	for _, o := range k.oneOffs {
+		if o.At <= months {
+			events[o.At] += o.Cents
+		}
+	}
+	var oneOffTotal int64
+	for _, v := range events {
+		oneOffTotal += v
+	}
+	// ponytail: goals are spent at the ETA they'd reach *without* this spending
+	// — no fixed-point iteration. Two goals racing for the same money will both
+	// land at their solo ETA, which is optimistic; fine for a what-if.
+	var goalSpend int64
+	if k.spendGoals {
+		for _, g := range goals {
+			at := max(g.ETAMonths, 1)
+			if g.ETAMonths < 0 || at > months {
+				continue
+			}
+			cents := convertRate(in.Rates, g.TargetCents, g.Goal.Currency, in.Display)
+			events[at] += cents
+			goalSpend += cents
+		}
+	}
+
+	spec := service.ProjectionSpec{
+		StartCents: nw.TotalCents, CashCents: k.cashCents, MonthlyCents: ov.SurplusCents,
+		// nw is computed after applyExclusions, so AlternativeCents is already 0
+		// when gold is unticked (in.Gold is nil'd there).
+		GoldCents:    nw.AlternativeCents,
+		AnnualReturn: rate, GoldAnnualReturn: goldRate, AnnualInflation: k.inflation, Events: events, Months: months,
+	}
+	proj := service.Project(spec)
+	pts := proj.Points
 	last := pts[len(pts)-1]
 
 	contributed := ov.SurplusCents * int64(months)
-	growth := last.BalanceCents - nw.TotalCents - contributed
 
 	pd := &projectionsViewData{
 		HorizonYears: horizon, Rate: rate, RatePct: int(rate*200 + 0.5), Currency: in.Display,
 		StartCents: nw.TotalCents, SurplusCents: ov.SurplusCents,
 		LiquidCents: nw.LiquidCents, GoldCents: nw.AlternativeCents, PropertyCents: nw.RealEstateCents,
-		ValueAtHorizonCents: last.BalanceCents, ContributedCents: contributed, GrowthCents: growth,
+		ValueAtHorizonCents: last.BalanceCents, ContributedCents: contributed, GrowthCents: proj.GrowthCents,
+		GoldRate:   goldRate,
+		StartItems: startItems, CashCents: k.cashCents, CashStr: CentsToStr(k.cashCents),
+		Inflation: k.inflation, SpendGoals: k.spendGoals, GoalSpendCents: goalSpend,
+		OneOffs: k.oneOffs, OneOffCents: oneOffTotal, SpentCents: oneOffTotal + goalSpend,
 		Goals: goals,
 	}
 
@@ -133,7 +277,11 @@ func projectionsData(d *Deps, in service.Inputs, r *http.Request) *projectionsVi
 				scIn := service.Apply(in, sc.Changes)
 				scNW := service.ComputeNetWorth(scIn)
 				scOv := service.BuildOverview(scIn)
-				scPts := service.ProjectSavings(scNW.TotalCents, scOv.SurplusCents, scIn.AnnualReturnRate, months)
+				scSpec := spec
+				scSpec.StartCents, scSpec.MonthlyCents = scNW.TotalCents, scOv.SurplusCents
+				scSpec.AnnualReturn = scIn.AnnualReturnRate
+				scSpec.GoldCents = scNW.AlternativeCents // gold rate carries over from the slider
+				scPts := service.Project(scSpec).Points
 				token := colorTokens[ci%len(colorTokens)]
 				ci++
 				series = append(series, chartSeries{Name: sc.Name, Points: scPts, Dashed: true, Color: token})

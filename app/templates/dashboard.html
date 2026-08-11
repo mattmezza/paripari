@@ -1,3 +1,17 @@
+{{/*
+  One partner's "net income" caption. Dot is a service.PartnerCashflow. It says
+  what the figure is made of, and flags the two ways it can silently be gross:
+  no deductions recorded at all, or percentages typed 100x too small (0.05 for
+  5%), which is the same thing arithmetically.
+*/}}
+{{define "net-income-note"}}
+{{if eq .GrossIncomeCents 0}}No income recorded yet. <a href="/income" class="link">Add a source</a>.
+{{else if eq .DeductionsCents 0}}<span style="color:var(--color-warning-ink)">No deductions recorded, so this equals gross. <a href="/income" class="link">Add them</a>.</span>
+{{else if lt .DeductionRateBP 100}}<span style="color:var(--color-warning-ink)">Only {{pct100 .DeductionRateBP}} of gross is deducted &mdash; percentages are typed as 5.3 for 5.3%. <a href="/income" class="link">Check them</a>.</span>
+{{else}}Gross yearly &divide; 12, less {{pct100 .DeductionRateBP}} of deductions.
+{{end}}
+{{end}}
+
 {{define "content"}}
 {{if not .Data}}
 <h1>Dashboard</h1>
@@ -11,6 +25,10 @@
   <a href="/transfers" class="pill pill--attention"><span class="pill__dot"></span>Transfers changed</a>
   {{end}}
 </div>
+
+{{if not $d.Empty}}
+<p class="helper" style="margin-block-end:1rem">Every amount below is <strong>per month</strong>, except net worth (what you own today) and goal targets (one-off totals).</p>
+{{end}}
 
 {{if $d.Empty}}
 <div class="card">
@@ -37,26 +55,28 @@
   <div class="card" style="flex:1 1 300px;min-width:0">
     <div class="card__title">{{$ov.A.Name}}</div>
     <dl style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 1rem;margin-block-start:.75rem">
-      <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.NetIncomeCents $ov.Currency}}</dd>
-        {{if $d.GrossAsNetA}}<dd style="margin:.25rem 0 0;font-size:.75rem;color:var(--color-warning-ink)">No deductions recorded, so this equals gross. <a href="/income" class="link">Add them</a></dd>{{end}}
+      <div style="grid-column:1/-1"><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.NetIncomeCents $ov.Currency}}</dd>
+        <dd class="helper" style="margin:.25rem 0 0">{{template "net-income-note" $ov.A}}</dd>
       </div>
       <div><dt class="label" style="margin:0">Personal expenses</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.PersonalExpensesCents $ov.Currency}}</dd></div>
       <div><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.CommonShareCents $ov.Currency}}</dd></div>
-      <div><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.AvailableCents $ov.Currency}}</dd></div>
+      <div style="grid-column:1/-1"><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.AvailableCents $ov.Currency}}</dd></div>
     </dl>
+    <p class="helper" style="margin-block-start:.75rem">Personal expenses: this partner's own, excluding anything ticked as savings. Share of common: their slice of every shared expense at the split below, savings included. Available: net income minus both.</p>
   </div>
 
   <div class="card" style="flex:1 1 300px;min-width:0">
     <div class="card__title">{{if $d.HasPartner}}{{$ov.B.Name}}{{else}}Partner{{end}}</div>
     {{if $d.HasPartner}}
     <dl style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 1rem;margin-block-start:.75rem">
-      <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.NetIncomeCents $ov.Currency}}</dd>
-        {{if $d.GrossAsNetB}}<dd style="margin:.25rem 0 0;font-size:.75rem;color:var(--color-warning-ink)">No deductions recorded, so this equals gross. <a href="/income" class="link">Add them</a></dd>{{end}}
+      <div style="grid-column:1/-1"><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.NetIncomeCents $ov.Currency}}</dd>
+        <dd class="helper" style="margin:.25rem 0 0">{{template "net-income-note" $ov.B}}</dd>
       </div>
       <div><dt class="label" style="margin:0">Personal expenses</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.PersonalExpensesCents $ov.Currency}}</dd></div>
       <div><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.CommonShareCents $ov.Currency}}</dd></div>
-      <div><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.AvailableCents $ov.Currency}}</dd></div>
+      <div style="grid-column:1/-1"><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.AvailableCents $ov.Currency}}</dd></div>
     </dl>
+    <p class="helper" style="margin-block-start:.75rem">Personal expenses: this partner's own, excluding anything ticked as savings. Share of common: their slice of every shared expense at the split below, savings included. Available: net income minus both.</p>
     {{else}}
     <p class="auth__meta" style="margin-block-start:.75rem">Invite your partner from Settings to see their side of the picture.</p>
     {{end}}
@@ -70,6 +90,25 @@
     <div><dt class="label" style="margin:0">Total expenses</dt><dd class="figure tnum" data-tick style="margin:.125rem 0 0">{{money $ov.TotalExpensesCents $ov.Currency}}</dd></div>
     <div><dt class="label" style="margin:0">Savings</dt><dd class="figure tnum" data-tick style="margin:.125rem 0 0">{{money $ov.TotalSavingsCents $ov.Currency}}</dd></div>
     <div><dt class="label" style="margin:0">Surplus</dt><dd class="figure tnum" data-tick style="margin:.125rem 0 0">{{money $ov.SurplusCents $ov.Currency}}</dd></div>
+  </dl>
+
+  <dl style="display:grid;gap:.5rem;margin:1rem 0 0;font-size:.8125rem;color:var(--color-muted)">
+    <div>
+      <dt class="label" style="margin:0">Total income</dt>
+      <dd style="margin:.125rem 0 0">Both partners' <strong>net</strong> monthly pay: gross yearly minus the deductions you recorded, divided by 12 &mdash; a 13th salary is spread across the year rather than counted as an extra month.{{if gt $ov.TotalGrossIncomeCents 0}} {{pct100 $ov.DeductionRateBP}} of gross is being deducted.{{end}}</dd>
+    </div>
+    <div>
+      <dt class="label" style="margin:0">Total expenses</dt>
+      <dd style="margin:.125rem 0 0">Everything leaving the household each month: personal spending, every common expense, and the amounts you tick as savings.</dd>
+    </div>
+    <div>
+      <dt class="label" style="margin:0">Savings</dt>
+      <dd style="margin:.125rem 0 0">Only expenses ticked as savings &mdash; personal ones plus each partner's share of the common ones. Pension and investment <em>balances</em> are net worth, not this figure; a pension contribution counts here only if you record it as a savings expense.</dd>
+    </div>
+    <div>
+      <dt class="label" style="margin:0">Surplus</dt>
+      <dd style="margin:.125rem 0 0">Income minus every non-savings expense: your savings plus whatever is left over. This is the number that funds goals and drives the projections.</dd>
+    </div>
   </dl>
 </div>
 
@@ -99,6 +138,7 @@
       <div><dt class="label" style="margin:0">Liquid</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.NetWorth.LiquidCents $d.NetWorth.Currency}}</dd></div>
       <div><dt class="label" style="margin:0">Total</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.NetWorth.TotalCents $d.NetWorth.Currency}}</dd></div>
     </dl>
+    <p class="helper" style="margin-block-start:.5rem">What you own today, not a monthly amount. Liquid is every account balance &mdash; checking, savings, investment, pension, buffers, envelopes. Total adds gold and property.</p>
     <a href="/net-worth" class="link" style="display:inline-block;margin-block-start:.75rem;font-size:.875rem">See the breakdown →</a>
   </div>
 
@@ -109,15 +149,20 @@
       {{range $d.Goals}}
       <div>
         <div style="display:flex;justify-content:space-between;font-size:.875rem;margin-block-end:.25rem">
-          <span>{{.Goal.Name}}</span>
+          <span>{{.Goal.Name}} · <span class="tnum">{{pct .Ratio}}</span></span>
           <span class="tnum">{{money .CurrentCents .Goal.Currency}} / {{money .TargetCents .Goal.Currency}}</span>
         </div>
-        <div style="height:8px;border-radius:4px;background:var(--color-rule);overflow:hidden">
+        <div style="height:8px;border-radius:4px;background:var(--color-rule);overflow:hidden" role="progressbar" aria-valuenow="{{.PercentInt}}" aria-valuemin="0" aria-valuemax="100">
           <div style="height:100%;width:{{pct .Ratio}};background:var(--color-positive)"></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.375rem;margin-block-start:.375rem">
+          {{if .StatusPill}}<span class="pill pill--{{.StatusPill}}">{{.StatusText}}</span>{{end}}
+          {{if .ETAText}}<span class="pill">{{if .DeadlineDate}}ETA {{.ETAText}} · due {{date .DeadlineDate}}{{else}}Reaches target {{.ETAText}}{{end}}</span>{{end}}
         </div>
       </div>
       {{end}}
     </div>
+    <p class="helper" style="margin-block-start:.75rem">Progress is your savings, investment and pension balances measured against the target &mdash; a one-off total, not a monthly amount. The date assumes the whole monthly surplus goes to each goal, so goals are not queued against each other.</p>
     {{else}}
     <p class="auth__meta" style="margin-block-start:.75rem">No goals yet. <a href="/goals" class="link">Add one</a> to track progress here.</p>
     {{end}}

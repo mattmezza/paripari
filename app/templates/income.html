@@ -1,5 +1,11 @@
 {{define "content"}}
-<h1 style="margin-block-end:1rem">Income</h1>
+<h1 style="margin-block-end:.25rem">Income</h1>
+<p class="helper" style="margin-block-end:1rem">
+  Gross is what you enter <strong>per year</strong>. Everything computed from it is <strong>per month</strong>:
+  the strip below is each partner's net monthly total &mdash; gross yearly minus every deduction, divided by 12,
+  so a 13th salary is spread over the year instead of counted as an extra month. Record every deduction
+  (social insurance, pension, tax at source) or net will simply equal gross.
+</p>
 
 {{template "income-summary-body" (dict "S" .Data "OOB" false)}}
 

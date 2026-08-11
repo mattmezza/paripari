@@ -139,7 +139,7 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 			d.View.Partial(w, "partials/trips-detail", data)
 			return
 		}
-		if _, err := d.Store.CreateTripItem(&it); err != nil {
+		if _, err := d.Store.CreateTripItem(in.Household.ID, &it); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -169,7 +169,7 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 			return
 		}
 		it.ID = itemID
-		if err := d.Store.UpdateTripItem(&it); err != nil {
+		if err := d.Store.UpdateTripItem(in.Household.ID, &it); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -189,7 +189,7 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 			return
 		}
 		itemID, _ := strconv.ParseInt(r.PathValue("itemID"), 10, 64)
-		if err := d.Store.DeleteTripItem(itemID); err != nil {
+		if err := d.Store.DeleteTripItem(in.Household.ID, itemID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

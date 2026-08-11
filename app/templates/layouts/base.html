@@ -38,13 +38,16 @@
   <link rel="canonical" href="{{.CanonicalURL}}">
   {{if not $public}}<meta name="robots" content="noindex, nofollow">{{end}}
 
-  <!-- Paint the correct theme before first paint. Must stay blocking and inline. -->
+  <!-- Paint the correct theme, and hide the amounts, before first paint.
+       Must stay blocking and inline: a privacy blur that arrives late has
+       already shown the numbers to whoever was looking. -->
   <script>
     (function () {
       try {
         var c = localStorage.getItem("pp-theme");
         var d = c ? c === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
         if (d) document.documentElement.classList.add("dark");
+        if (localStorage.getItem("pp-private") === "1") document.documentElement.classList.add("private");
       } catch (e) {}
     })();
   </script>
@@ -129,6 +132,7 @@
 
   {{template "tabbar" .}}
   {{template "more-sheet" .}}
+  {{template "calculator" .}}
   {{end}}
 </body>
 </html>

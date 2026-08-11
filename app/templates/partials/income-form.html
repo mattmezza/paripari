@@ -54,17 +54,24 @@
       <label class="label" style="margin:0">Deductions</label>
       <button type="button" class="btn btn--sm btn--ghost" @click="deductions.push({Name:'',AmountCents:0,PercentBP:0,Period:'monthly'})">+ Add deduction</button>
     </div>
+    {{/* The amount box carries two units and used to show neither, so a rate
+         could be typed as 0.05 for 5% and land 100x low — net then reads as
+         gross. The unit is now printed beside the box and spelled out here. */}}
+    <p class="helper" style="margin-block-start:.25rem">Percentages are of gross yearly: type <strong>5.3</strong> for 5.3%, not 0.053.</p>
     <template x-for="(d, i) in deductions" :key="i">
-      <div style="display:grid;grid-template-columns:1fr 6rem 6rem auto;gap:.5rem;margin-block-start:.5rem;align-items:center">
+      <div style="display:grid;grid-template-columns:1fr 7rem 6rem auto;gap:.5rem;margin-block-start:.5rem;align-items:center">
         <input class="input" type="text" name="deduction_name[]" x-model="d.Name" placeholder="e.g. Social insurance">
         {{/* One field, two meanings: cents for fixed amounts, basis points for
              percentages. Both are the typed number × 100, so the handler parses
              them identically and only the destination column differs. */}}
-        <input class="input input--figure" type="text" inputmode="decimal" name="deduction_amount[]"
-          :aria-label="d.Period === 'percent' ? 'Percent of gross' : 'Amount'"
-          :value="((d.Period === 'percent' ? d.PercentBP : d.AmountCents)/100).toFixed(2)"
-          @change="const v = Math.round(parseFloat($event.target.value.replace(',', '.')||0)*100);
-                   d.Period === 'percent' ? d.PercentBP = v : d.AmountCents = v">
+        <div style="display:flex;align-items:center;gap:.25rem;min-width:0">
+          <input class="input input--figure" type="text" inputmode="decimal" name="deduction_amount[]" style="min-width:0"
+            :aria-label="d.Period === 'percent' ? 'Percent of gross' : 'Amount'"
+            :value="((d.Period === 'percent' ? d.PercentBP : d.AmountCents)/100).toFixed(2)"
+            @change="const v = Math.round(parseFloat($event.target.value.replace(',', '.')||0)*100);
+                     d.Period === 'percent' ? d.PercentBP = v : d.AmountCents = v">
+          <span class="helper" aria-hidden="true" x-text="d.Period === 'percent' ? '%' : '{{.Src.Currency}}'"></span>
+        </div>
         <select class="select" name="deduction_period[]" x-model="d.Period">
           <option value="monthly">/month</option>
           <option value="yearly">/year</option>

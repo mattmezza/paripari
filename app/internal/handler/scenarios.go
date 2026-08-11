@@ -116,7 +116,7 @@ func registerScenarios(mux *http.ServeMux, d *Deps) {
 			return
 		}
 		c.ScenarioID = sc.ID
-		if _, err := d.Store.CreateScenarioChange(&c); err != nil {
+		if _, err := d.Store.CreateScenarioChange(in.Household.ID, &c); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -137,7 +137,7 @@ func registerScenarios(mux *http.ServeMux, d *Deps) {
 			return
 		}
 		changeID, _ := strconv.ParseInt(r.PathValue("changeID"), 10, 64)
-		if err := d.Store.DeleteScenarioChange(changeID); err != nil {
+		if err := d.Store.DeleteScenarioChange(in.Household.ID, changeID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

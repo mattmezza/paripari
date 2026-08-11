@@ -9,11 +9,11 @@
 {{define "scenarios-builder"}}
 <div class="card" style="margin-block-end:1rem">
   <form hx-post="/scenarios/{{.Scenario.ID}}" style="display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end">
-    <div class="field" style="flex:1;min-width:12rem">
+    <div class="field" style="margin:0;flex:1;min-width:12rem">
       <label class="label" for="scenario-name">Name</label>
       <input class="input" id="scenario-name" name="name" value="{{.Scenario.Name}}" required>
     </div>
-    <div class="field" style="flex:2;min-width:16rem">
+    <div class="field" style="margin:0;flex:2;min-width:16rem">
       <label class="label" for="scenario-desc">Description</label>
       <input class="input" id="scenario-desc" name="description" value="{{.Scenario.Description}}" placeholder="optional">
     </div>

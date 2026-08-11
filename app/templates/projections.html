@@ -7,8 +7,8 @@
 <div class="card" x-data="ppProjectionChart()">
   <canvas x-ref="canvas" style="height:260px;max-height:320px" aria-label="Net worth projection chart" role="img"></canvas>
 
-  <form hx-get="/projections/data" hx-target="#projection-data" hx-swap="innerHTML"
-        hx-trigger="change, input delay:300ms from:#return-rate">
+  <form id="projection-form" hx-get="/projections/data" hx-target="#projection-data" hx-swap="innerHTML"
+        hx-trigger="change, input delay:300ms from:#return-rate, input delay:300ms from:#inflation-rate, input delay:300ms from:#gold-rate">
     <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-block-start:1rem" role="radiogroup" aria-label="Horizon">
       {{$horizon := $d.HorizonYears}}
       <label class="btn btn--sm" style="cursor:pointer"><input type="radio" name="horizon" value="1" style="accent-color:var(--color-accent);margin-inline-end:.375rem" {{if eq $horizon 1}}checked{{end}}>1y</label>
@@ -20,12 +20,87 @@
     <div class="field" style="margin-block-start:1rem">
       <label class="label" for="return-rate">Assumed annual return</label>
       <div style="display:flex;align-items:center;gap:.75rem">
-        <input type="range" id="return-rate" min="0" max="0.08" step="0.005" value="{{$d.Rate}}"
+        <input type="range" id="return-rate" min="-0.10" max="0.10" step="0.001" value="{{$d.Rate}}"
           name="rate" style="flex:1;accent-color:var(--color-accent)"
           oninput="document.getElementById('rate-readout').textContent = (this.value*100).toFixed(1) + '%'">
         <span class="figure figure--sm" id="rate-readout" style="min-width:4.5ch;text-align:right">{{pct $d.Rate}}</span>
       </div>
-      <span class="helper" style="min-height:0">Assumed growth of the whole projected balance, compounded monthly — not a share of your assets. 0% for cash, 4-7% for a diversified investment mix.</span>
+      <span class="helper" style="min-height:0">Assumed annual return on the invested part of your balance. Negative values model a shrinking market or drawdown. 0% for cash, 4-7% for a diversified mix.</span>
+    </div>
+
+    {{if gt $d.GoldCents 0}}
+    <div class="field" style="margin-block-start:1rem">
+      <label class="label" for="gold-rate">Assumed annual return on gold</label>
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <input type="range" id="gold-rate" min="0" max="0.15" step="0.001" value="{{$d.GoldRate}}"
+          name="gold_rate" style="flex:1;accent-color:var(--color-accent)"
+          oninput="document.getElementById('gold-rate-readout').textContent = (this.value*100).toFixed(1) + '%'">
+        <span class="figure figure--sm" id="gold-rate-readout" style="min-width:4.5ch;text-align:right">{{pct $d.GoldRate}}</span>
+      </div>
+      <span class="helper" style="min-height:0">Your gold compounds at this rate instead of the one above.</span>
+    </div>
+    {{end}}
+
+    {{if $d.StartItems}}
+    <div style="margin-block-start:1rem">
+      <div class="label">Count in the starting balance</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.75rem">
+        {{range $d.StartItems}}
+        {{/* The checkbox reads as "include"; the hidden `exclude` input is what
+             the server sees, disabled (and so not serialised) while ticked. */}}
+        <label style="display:flex;align-items:center;gap:.375rem;font-size:.875rem" x-data="{ on: {{.Included}} }">
+          <input type="checkbox" x-model="on" style="accent-color:var(--color-accent)">
+          <input type="hidden" name="exclude" value="{{.Token}}" x-bind:disabled="on">
+          {{.Name}} <span class="tnum" style="color:var(--color-muted)">{{money .Cents $d.Currency}}</span>
+        </label>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.75rem;margin-block-start:1rem">
+      <div class="field">
+        <label class="label" for="cash-held">Kept as cash ({{$d.Currency}})</label>
+        <input class="input input--figure" id="cash-held" name="cash" inputmode="decimal" value="{{$d.CashStr}}">
+        <span class="helper">Slice of the starting balance left uninvested. It earns nothing, so in today's money it shrinks with inflation.</span>
+      </div>
+      <div class="field">
+        <label class="label" for="inflation-rate">Inflation</label>
+        <div style="display:flex;align-items:center;gap:.75rem">
+          <input type="range" id="inflation-rate" min="0" max="0.06" step="0.001" value="{{$d.Inflation}}"
+            name="inflation" style="flex:1;accent-color:var(--color-accent)"
+            oninput="document.getElementById('inflation-readout').textContent = (this.value*100).toFixed(1) + '%'">
+          <span class="figure figure--sm" id="inflation-readout" style="min-width:4.5ch;text-align:right">{{pct $d.Inflation}}</span>
+        </div>
+        <span class="helper">Above 0% the whole curve is in today's money.</span>
+      </div>
+    </div>
+
+    {{if $d.Goals}}
+    <label style="display:flex;align-items:center;gap:.375rem;font-size:.875rem;margin-block-start:1rem">
+      <input type="checkbox" name="goals" value="1" style="accent-color:var(--color-accent)" {{if $d.SpendGoals}}checked{{end}}>
+      Spend each goal when it is reached
+    </label>
+    {{end}}
+
+    <div style="margin-block-start:1rem" x-data="{ rows: [] }" x-init="rows = JSON.parse($refs.init.textContent) || []">
+      <script type="application/json" x-ref="init">{{json $d.OneOffs}}</script>
+      <div class="label">One-off expenses</div>
+      <div style="display:grid;gap:.5rem">
+        <template x-for="(row, i) in rows" :key="i">
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
+            <input class="input" type="number" min="1" step="1" name="oneoff_at" x-model="row.At"
+              style="width:6rem" aria-label="Months from now">
+            <span class="helper" style="min-height:0">months from now</span>
+            <input class="input input--figure" name="oneoff_amount" inputmode="decimal" x-model="row.AmountStr"
+              placeholder="0.00" style="width:8rem" aria-label="Amount">
+            <button type="button" class="btn btn--sm btn--ghost"
+              @click="rows.splice(i,1); document.getElementById('projection-form').dispatchEvent(new Event('change',{bubbles:true}))">Remove</button>
+          </div>
+        </template>
+      </div>
+      <button type="button" class="btn btn--sm" style="margin-block-start:.5rem"
+        @click="rows.push({At: 12, AmountStr: ''})">+ One-off expense</button>
     </div>
 
     {{if $d.Scenarios}}

@@ -1,0 +1,47 @@
+{{/*
+  Privacy card for /settings. Takes no data.
+
+  ponytail: these three preferences live in localStorage, not the database.
+  They answer "who is standing behind *this* screen" — a phone in public wants
+  them on, the laptop at home does not — so a per-device setting is the correct
+  scope, and it costs no migration, no handler and no round trip.
+*/}}
+{{define "settings-privacy"}}
+<section class="card" style="margin-block-end:1.5rem"
+  x-data="{ on: false, timer: '10', shake: false }"
+  x-init="
+    on = localStorage.getItem('pp-private') === '1';
+    timer = localStorage.getItem('pp-private-timer') || '10';
+    shake = localStorage.getItem('pp-shake') === '1';
+    $watch('timer', v => localStorage.setItem('pp-private-timer', v));
+  ">
+  <div class="card__head"><span class="card__title">Privacy</span></div>
+
+  <label style="display:flex;align-items:center;gap:.5rem;margin-block-end:.75rem">
+    <input type="checkbox" x-model="on" @change="window.ppPrivacy.set(on)" style="accent-color:var(--color-accent)">
+    <span>Hide amounts</span>
+  </label>
+  <p class="helper" style="margin-block-end:1rem">
+    Every figure and chart is blurred. Tap any blurred number to reveal them all — the sidebar has the same switch.
+  </p>
+
+  <div class="field" style="max-width:20rem">
+    <label class="label" for="privacy-timer">Re-hide after</label>
+    <select class="select" id="privacy-timer" x-model="timer">
+      <option value="5">5 seconds</option>
+      <option value="10">10 seconds</option>
+      <option value="30">30 seconds</option>
+      <option value="60">1 minute</option>
+      <option value="0">Never — until I hide them again</option>
+    </select>
+  </div>
+
+  <label style="display:flex;align-items:center;gap:.5rem">
+    <input type="checkbox" x-model="shake" style="accent-color:var(--color-accent)"
+           @change="window.ppShake(shake).then(ok => shake = ok)">
+    <span>Shake the phone to reveal or hide</span>
+  </label>
+  <p class="helper">Needs a device with motion sensors; iOS asks for permission the first time you switch this on.</p>
+</section>
+{{end}}
+{{template "settings-privacy" .}}

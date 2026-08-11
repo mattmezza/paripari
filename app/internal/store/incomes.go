@@ -35,7 +35,7 @@ func (s *Store) Income(householdID, id int64) (*model.IncomeSource, error) {
 	if err != nil {
 		return nil, mapNoRows(err)
 	}
-	in.Deductions, err = s.Deductions(in.ID)
+	in.Deductions, err = s.Deductions(householdID, in.ID)
 	return &in, err
 }
 
@@ -59,16 +59,20 @@ func (s *Store) Incomes(householdID int64) ([]model.IncomeSource, error) {
 		return nil, err
 	}
 	for i := range out {
-		if out[i].Deductions, err = s.Deductions(out[i].ID); err != nil {
+		if out[i].Deductions, err = s.Deductions(householdID, out[i].ID); err != nil {
 			return nil, err
 		}
 	}
 	return out, nil
 }
 
-func (s *Store) Deductions(incomeID int64) ([]model.IncomeDeduction, error) {
+// ownedIncome is the tenant predicate for income_deductions: the child table
+// has no household_id, so scope it through its parent income source.
+const ownedIncome = ` AND income_source_id IN (SELECT id FROM income_sources WHERE household_id = ?)`
+
+func (s *Store) Deductions(householdID, incomeID int64) ([]model.IncomeDeduction, error) {
 	rows, err := s.DB.Query(`SELECT id, income_source_id, name, amount_cents, period, percent_bp
-		FROM income_deductions WHERE income_source_id = ? ORDER BY id`, incomeID)
+		FROM income_deductions WHERE income_source_id = ?`+ownedIncome+` ORDER BY id`, incomeID, householdID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,22 +88,26 @@ func (s *Store) Deductions(incomeID int64) ([]model.IncomeDeduction, error) {
 	return out, rows.Err()
 }
 
-func (s *Store) CreateDeduction(d *model.IncomeDeduction) (int64, error) {
+func (s *Store) CreateDeduction(householdID int64, d *model.IncomeDeduction) (int64, error) {
 	res, err := s.DB.Exec(`INSERT INTO income_deductions (income_source_id, name, amount_cents, period, percent_bp)
-		VALUES (?, ?, ?, ?, ?)`, d.IncomeSourceID, d.Name, d.AmountCents, d.Period, d.PercentBP)
+		SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM income_sources WHERE id = ? AND household_id = ?)`,
+		d.IncomeSourceID, d.Name, d.AmountCents, d.Period, d.PercentBP, d.IncomeSourceID, householdID)
 	if err != nil {
 		return 0, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return 0, ErrNotFound
 	}
 	return res.LastInsertId()
 }
 
-func (s *Store) UpdateDeduction(d *model.IncomeDeduction) error {
-	_, err := s.DB.Exec(`UPDATE income_deductions SET name = ?, amount_cents = ?, period = ?, percent_bp = ? WHERE id = ?`,
-		d.Name, d.AmountCents, d.Period, d.PercentBP, d.ID)
+func (s *Store) UpdateDeduction(householdID int64, d *model.IncomeDeduction) error {
+	_, err := s.DB.Exec(`UPDATE income_deductions SET name = ?, amount_cents = ?, period = ?, percent_bp = ?
+		WHERE id = ?`+ownedIncome, d.Name, d.AmountCents, d.Period, d.PercentBP, d.ID, householdID)
 	return err
 }
 
-func (s *Store) DeleteDeduction(id int64) error {
-	_, err := s.DB.Exec(`DELETE FROM income_deductions WHERE id = ?`, id)
+func (s *Store) DeleteDeduction(householdID, id int64) error {
+	_, err := s.DB.Exec(`DELETE FROM income_deductions WHERE id = ?`+ownedIncome, id, householdID)
 	return err
 }

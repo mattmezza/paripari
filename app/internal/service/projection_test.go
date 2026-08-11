@@ -134,3 +134,88 @@ func TestMultiSeries(t *testing.T) {
 		t.Errorf("invested should outgrow cash")
 	}
 }
+
+func TestProject(t *testing.T) {
+	base := ProjectionSpec{StartCents: 1000000, MonthlyCents: 50000, AnnualReturn: 0.06, Months: 120}
+
+	// No knobs set: identical to the plain compounding curve.
+	if got, want := Project(base).Points[120], ProjectSavings(base.StartCents, base.MonthlyCents, base.AnnualReturn, 120)[120]; got != want {
+		t.Errorf("plain projection = %+v, want %+v", got, want)
+	}
+
+	// A cash slice earns nothing, so it can only drag the total down.
+	cash := base
+	cash.CashCents = 400000
+	if Project(cash).Points[120].BalanceCents >= Project(base).Points[120].BalanceCents {
+		t.Error("cash held back should end below the fully invested run")
+	}
+	// Cash bigger than the start is clamped, not negative-invested.
+	over := base
+	over.CashCents = base.StartCents * 2
+	if Project(over).Points[1].BalanceCents <= 0 {
+		t.Error("cash over the starting balance should clamp, not go negative")
+	}
+
+	// Inflation puts the curve in today's money: strictly lower, never NaN.
+	infl := base
+	infl.AnnualInflation = 0.03
+	if Project(infl).Points[120].BalanceCents >= Project(base).Points[120].BalanceCents {
+		t.Error("real terms should end below nominal")
+	}
+
+	// A one-off comes straight off the balance, plus the growth it would have earned.
+	ev := base
+	ev.Events = map[int]int64{12: 300000}
+	got := Project(ev)
+	if diff := Project(base).Points[120].BalanceCents - got.Points[120].BalanceCents; diff < 300000 {
+		t.Errorf("one-off cost %d, want at least the 300000 spent", diff)
+	}
+	if got.SpentCents != 300000 {
+		t.Errorf("SpentCents = %d, want 300000", got.SpentCents)
+	}
+	// Spending lands out of cash first, leaving the invested pot untouched.
+	evCash := ev
+	evCash.CashCents = 500000
+	if s := Project(evCash); s.Points[120].BalanceCents >= Project(cash).Points[120].BalanceCents {
+		t.Error("spending should still reduce the cash-holding run")
+	}
+
+	// Zero gold: the gold rate must not touch anything (regression guard).
+	noGold := base
+	noGold.GoldAnnualReturn = 0.30
+	if a, b := Project(noGold), Project(base); a.Points[120] != b.Points[120] || a.GrowthCents != b.GrowthCents {
+		t.Error("gold rate must be inert when GoldCents is 0")
+	}
+
+	// Gold above the general rate ends above an all-general run.
+	gold := base
+	gold.GoldCents = 400000
+	gold.GoldAnnualReturn = 0.12
+	if Project(gold).Points[120].BalanceCents <= Project(base).Points[120].BalanceCents {
+		t.Error("gold above the general rate should end higher")
+	}
+	// Gold at exactly the general rate reproduces the all-general run.
+	same := gold
+	same.GoldAnnualReturn = base.AnnualReturn
+	if a, b := Project(same), Project(base); a.Points[120] != b.Points[120] {
+		t.Errorf("gold at the general rate = %+v, want %+v", a.Points[120], b.Points[120])
+	}
+	// Gold's return is credited to GrowthCents.
+	if Project(gold).GrowthCents <= Project(same).GrowthCents {
+		t.Error("faster gold should credit more growth")
+	}
+	// Cash + gold over the start clamps: gold takes its share, cash gets the rest.
+	clamp := base
+	clamp.GoldCents, clamp.CashCents = base.StartCents, base.StartCents
+	if got, want := Project(clamp).Points[1].BalanceCents, Project(ProjectionSpec{
+		StartCents: base.StartCents, GoldCents: base.StartCents, MonthlyCents: base.MonthlyCents, Months: 1,
+	}).Points[1].BalanceCents; got != want {
+		t.Errorf("clamped run = %d, want %d (cash squeezed to zero)", got, want)
+	}
+	// Spending drains gold before the invested pot.
+	evGold := gold
+	evGold.Events = map[int]int64{12: 300000}
+	if Project(evGold).Points[120].BalanceCents <= Project(ev).Points[120].BalanceCents {
+		t.Error("gold-holding run should still beat the all-general run after the same spend")
+	}
+}

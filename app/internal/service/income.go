@@ -67,7 +67,25 @@ type PartnerIncome struct {
 	FixedMonthlyCents    int64
 	VariableMonthlyCents int64
 	TotalMonthlyCents    int64
-	Sources              []IncomeCalc
+	// GrossMonthlyCents is gross yearly ÷ 12 across every source;
+	// DeductionsMonthlyCents is exactly Gross − Total, so the three always
+	// reconcile on screen even after per-source rounding and conversion.
+	GrossMonthlyCents      int64
+	DeductionsMonthlyCents int64
+	Sources                []IncomeCalc
+}
+
+// DeductionRateBP is deductions as basis points of gross (5.3% -> 530), the
+// unit the pct100 template func renders. Zero gross means zero rate.
+func (p PartnerIncome) DeductionRateBP() int64 {
+	return rateBP(p.DeductionsMonthlyCents, p.GrossMonthlyCents)
+}
+
+func rateBP(part, whole int64) int64 {
+	if whole <= 0 {
+		return 0
+	}
+	return divRound(part*10000, whole)
 }
 
 // PartnerIncomes groups income sources per user, converting each source's net
@@ -86,6 +104,9 @@ func PartnerIncomes(sources []model.IncomeSource, rates Rates, display string) m
 			p.FixedMonthlyCents += net
 		}
 		p.TotalMonthlyCents = p.FixedMonthlyCents + p.VariableMonthlyCents
+		gross := conv(rates, divRound(s.GrossYearlyCents, 12), s.Currency, display)
+		p.GrossMonthlyCents += gross
+		p.DeductionsMonthlyCents += gross - net
 		out[s.UserID] = p
 	}
 	return out
