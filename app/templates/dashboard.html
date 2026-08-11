@@ -59,10 +59,11 @@
         <dd class="helper" style="margin:.25rem 0 0">{{template "net-income-note" $ov.A}}</dd>
       </div>
       <div><dt class="label" style="margin:0">Personal expenses</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.PersonalExpensesCents $ov.Currency}}</dd></div>
-      <div><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.CommonShareCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Personal savings</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.PersonalSavingsCents $ov.Currency}}</dd></div>
+      <div style="grid-column:1/-1"><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.CommonShareCents $ov.Currency}}</dd></div>
       <div style="grid-column:1/-1"><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.AvailableCents $ov.Currency}}</dd></div>
     </dl>
-    <p class="helper" style="margin-block-start:.75rem">Personal expenses: this partner's own, excluding anything ticked as savings. Share of common: their slice of every shared expense at the split below, savings included. Available: net income minus both.</p>
+    <p class="helper" style="margin-block-start:.75rem">Personal expenses: this partner's own, excluding anything ticked as savings. Personal savings: their own expenses that <em>are</em> ticked as savings &mdash; money kept, not spent. Share of common: their slice of every shared expense at the split below, savings included. Available: net income minus all three.</p>
   </div>
 
   <div class="card" style="flex:1 1 300px;min-width:0">
@@ -73,10 +74,11 @@
         <dd class="helper" style="margin:.25rem 0 0">{{template "net-income-note" $ov.B}}</dd>
       </div>
       <div><dt class="label" style="margin:0">Personal expenses</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.PersonalExpensesCents $ov.Currency}}</dd></div>
-      <div><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.CommonShareCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Personal savings</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.PersonalSavingsCents $ov.Currency}}</dd></div>
+      <div style="grid-column:1/-1"><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.CommonShareCents $ov.Currency}}</dd></div>
       <div style="grid-column:1/-1"><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.AvailableCents $ov.Currency}}</dd></div>
     </dl>
-    <p class="helper" style="margin-block-start:.75rem">Personal expenses: this partner's own, excluding anything ticked as savings. Share of common: their slice of every shared expense at the split below, savings included. Available: net income minus both.</p>
+    <p class="helper" style="margin-block-start:.75rem">Personal expenses: this partner's own, excluding anything ticked as savings. Personal savings: their own expenses that <em>are</em> ticked as savings &mdash; money kept, not spent. Share of common: their slice of every shared expense at the split below, savings included. Available: net income minus all three.</p>
     {{else}}
     <p class="auth__meta" style="margin-block-start:.75rem">Invite your partner from Settings to see their side of the picture.</p>
     {{end}}

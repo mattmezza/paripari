@@ -1,0 +1,45 @@
+{{/* Export / import the whole household. dot: *settingsData */}}
+{{define "settings-backup"}}
+<section class="card" id="settings-backup" style="margin-block-end:1.5rem">
+  <div class="card__head"><span class="card__title">Backup</span></div>
+
+  {{if .Notice}}<div class="flash flash--ok" style="margin-block-end:1rem"><span class="flash__mark">✓</span><span>{{.Notice}}</span></div>{{end}}
+  {{if .Err}}<div class="flash flash--error" style="margin-block-end:1rem"><span class="flash__mark">⚠</span><span>{{.Err}}</span></div>{{end}}
+
+  <p class="helper" style="margin-block-end:.75rem">
+    One JSON file with this household's settings and every row it owns — income, expenses, accounts,
+    assets, goals, scenarios, trips and history. No passwords and no invite code are ever included.
+  </p>
+  {{/* hx-boost is on globally; without this htmx would swap the JSON into the page. */}}
+  <a class="btn" href="/settings/export" hx-boost="false" download>Export all data</a>
+
+  <hr style="border:0;border-block-start:1px solid var(--color-rule);margin:1.25rem 0">
+
+  <span class="label">Import a backup</span>
+  <p class="helper" style="margin-block-end:1rem">
+    This <strong>replaces everything currently in this household</strong> with the contents of the file —
+    it is not a merge. Anything not in the file is deleted. Export first if you want a way back.
+    Partners are matched by email, then by order; rows belonging to a partner this household doesn't
+    have cannot be imported and are reported below.
+  </p>
+
+  <form hx-post="/settings/import" hx-encoding="multipart/form-data"
+        hx-target="#settings-backup" hx-swap="outerHTML"
+        x-data="{ ok: false }" style="display:grid;gap:.75rem;max-width:32rem">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="field" style="margin:0">
+      <label class="label" for="import-file">Backup file</label>
+      <input class="input" id="import-file" name="file" type="file" accept="application/json,.json" required>
+      <span class="helper">A file exported from PariPari, at most 8 MB.</span>
+    </div>
+    <label style="display:flex;align-items:flex-start;gap:.5rem;min-height:44px">
+      <input type="checkbox" name="confirm" x-model="ok" style="margin-block-start:.35rem;accent-color:var(--color-accent)">
+      <span>I understand this replaces everything currently in this household.</span>
+    </label>
+    <button class="btn" type="submit" :disabled="!ok" style="justify-self:start">Import and replace</button>
+  </form>
+</section>
+{{end}}
+
+{{/* File-level body so view.Partial(w, "partials/settings-backup", data) also works. */}}
+{{template "settings-backup" .}}

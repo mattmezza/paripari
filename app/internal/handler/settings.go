@@ -118,6 +118,8 @@ func registerSettings(mux *http.ServeMux, d *Deps) {
 		render(w, r, "", "", http.StatusOK)
 	})
 
+	registerBackup(mux, d, partial)
+
 	mux.HandleFunc("POST /settings/household", func(w http.ResponseWriter, r *http.Request) {
 		sess := auth.FromContext(r)
 		hh, err := d.Store.Household(sess.Household.ID)
