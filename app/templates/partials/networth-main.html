@@ -124,8 +124,11 @@
 
 <script>
 function ppNetWorthCharts(){
+  // Chart lives in this closure, never on the Alpine component: Alpine deep-proxies
+  // state, and its proxy around Chart.js's own options proxy overflows the stack
+  // on the first theme flip.
+  let chart = null;
   return {
-    chart: null,
     payload(){
       const el = document.getElementById('nw-payload');
       try { return el ? JSON.parse(el.textContent) : null; } catch(e){ return null; }
@@ -141,7 +144,7 @@ function ppNetWorthCharts(){
       const p = this.payload();
       if (!p) return;
       const c = this.colors();
-      this.chart = new Chart(this.$refs.breakdown.getContext('2d'), {
+      chart = new Chart(this.$refs.breakdown.getContext('2d'), {
         type: 'doughnut',
         data: {
           labels: ['Liquid', 'Alternative', 'Real estate'],
@@ -169,7 +172,7 @@ function ppNetWorthCharts(){
       const p = this.payload();
       if (!p || !p.hasHistory) return;
       const c = this.colors();
-      this.chart = new Chart(this.$refs.history.getContext('2d'), {
+      chart = new Chart(this.$refs.history.getContext('2d'), {
         type: 'line',
         data: {
           labels: p.history.map(pt => pt.d),
@@ -197,18 +200,18 @@ function ppNetWorthCharts(){
       matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => this.recolor());
     },
     recolor(){
-      if (!this.chart) return;
+      if (!chart) return;
       const c = this.colors();
-      if (this.chart.config.type === 'doughnut') {
-        this.chart.data.datasets[0].backgroundColor = [c.accent, c.warning, c.neutral];
-        this.chart.data.datasets[0].borderColor = c.surface;
+      if (chart.config.type === 'doughnut') {
+        chart.data.datasets[0].backgroundColor = [c.accent, c.warning, c.neutral];
+        chart.data.datasets[0].borderColor = c.surface;
       } else {
-        this.chart.data.datasets[0].borderColor = c.accent;
-        this.chart.options.scales.y.grid.color = c.rule;
-        this.chart.options.scales.x.ticks.color = c.neutral;
-        this.chart.options.scales.y.ticks.color = c.neutral;
+        chart.data.datasets[0].borderColor = c.accent;
+        chart.options.scales.y.grid.color = c.rule;
+        chart.options.scales.x.ticks.color = c.neutral;
+        chart.options.scales.y.ticks.color = c.neutral;
       }
-      this.chart.update('none');
+      chart.update('none');
     },
   };
 }

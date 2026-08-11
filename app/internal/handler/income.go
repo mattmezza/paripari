@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/mattmezza/paripari/internal/jobs"
 	"net/http"
 	"strconv"
 
@@ -225,6 +226,8 @@ func saveDeductions(d *Deps, incomeID int64, r *http.Request) error {
 }
 
 func writeIncomeSummary(d *Deps, w http.ResponseWriter, r *http.Request, sess *auth.Session) {
+	// Income changed: record the monthly picture for /history.
+	jobs.SnapshotHousehold(r.Context(), sess.Household.ID)
 	in, err := BuildInputs(d, r)
 	if err != nil {
 		return

@@ -1,6 +1,7 @@
 {{define "content"}}
 {{$list := .Data.List}}
-<h1 style="margin-block-end:.75rem">Expenses</h1>
+<h1 style="margin-block-end:.25rem">Expenses</h1>
+<p class="helper" style="margin-block-end:.75rem">Every amount on this page is <strong>per month</strong>. Common expenses are split by your household method; each one can name the account it is paid from.</p>
 
 <div style="display:flex;gap:.5rem;margin-block-end:1rem" role="tablist" aria-label="Filter expenses">
   <a href="/expenses" class="btn btn--sm {{if eq $list.Filter "all"}}btn--primary{{end}}">All</a>

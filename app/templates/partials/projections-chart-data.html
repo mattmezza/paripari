@@ -28,6 +28,45 @@
   </div>
 </div>
 
+<div class="card" style="margin-block-start:.75rem">
+  <div class="card__head"><h3 class="card__title">What this assumes</h3></div>
+  <dl style="display:grid;gap:.75rem;margin:0;font-size:.875rem">
+    <div>
+      <dt class="label" style="margin:0">Starting balance · <span class="tnum">{{money .StartCents .Currency}}</span></dt>
+      <dd style="margin:.125rem 0 0;color:var(--color-muted)">
+        Your whole net worth: every account balance ({{money .LiquidCents .Currency}}) — checking, savings, investment, pension, buffers and envelopes —
+        {{if gt .GoldCents 0}}plus gold ({{money .GoldCents .Currency}}){{else}}plus gold (none recorded){{end}},
+        {{if gt .PropertyCents 0}}plus property ({{money .PropertyCents .Currency}}){{else}}plus property (none recorded){{end}}.
+        Nothing is left out, so property and gold are projected as if they grew at the same rate as the rest.
+      </dd>
+    </div>
+    <div>
+      <dt class="label" style="margin:0">Monthly contribution · <span class="tnum">{{money .SurplusCents .Currency}}</span></dt>
+      <dd style="margin:.125rem 0 0;color:var(--color-muted)">
+        Your monthly surplus: income minus every non-savings expense — deliberate savings plus whatever is left over. Added at the end of each month.
+      </dd>
+    </div>
+    <div>
+      <dt class="label" style="margin:0">Return · <span class="tnum">{{pct .Rate}} a year</span></dt>
+      <dd style="margin:.125rem 0 0;color:var(--color-muted)">
+        Applied to the entire projected balance, compounded monthly at {{pct .Rate}}÷12. It is an assumption about how your money grows, not a share of your assets being spent or invested.
+      </dd>
+    </div>
+    <div>
+      <dt class="label" style="margin:0">Horizon · <span class="tnum">{{.HorizonYears}} years</span></dt>
+      <dd style="margin:.125rem 0 0;color:var(--color-muted)">
+        Compounded month by month to year {{.HorizonYears}}. No inflation, taxes, raises or one-off events are modelled.{{if .Goals}} Dashed lines on the chart mark each goal's target amount.{{end}}
+      </dd>
+    </div>
+  </dl>
+  {{if le .SurplusCents 0}}
+  <p style="margin-block-start:.75rem;padding:.625rem .75rem;border-radius:var(--radius-sm);background:var(--color-warning-soft);color:var(--color-warning-ink);font-size:.8125rem">
+    Nothing is left over each month, so this is not a savings plan: the curve is only your existing balance{{if lt .SurplusCents 0}}, shrinking as the monthly shortfall is withdrawn{{end}}.
+    Check your <a href="/expenses" class="link">expenses</a> and <a href="/income" class="link">income</a> first.
+  </p>
+  {{end}}
+</div>
+
 {{if .Goals}}
 <div class="card" style="margin-block-start:.75rem">
   <div class="card__head"><h3 class="card__title">Goal ETA at {{pct .Rate}} return</h3></div>

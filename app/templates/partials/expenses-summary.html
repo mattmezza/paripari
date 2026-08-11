@@ -8,29 +8,30 @@
 {{define "expenses-summary-body"}}
 <div id="expenses-summary" {{if .OOB}}hx-swap-oob="true"{{end}}
   style="position:sticky;bottom:0;z-index:5;background:var(--color-surface);border-block-start:1px solid var(--color-rule);padding:.625rem .875rem;margin-inline:-1rem;display:flex;flex-wrap:wrap;gap:.75rem 1.25rem;justify-content:space-between">
+  {{/* Disposable income leads: it is the number the user comes here for, and
+       the bar's later rows get covered by the mobile tab bar. Per-partner
+       figures ride along as one muted line each instead of their own cells, so
+       the whole bar stays two rows tall at 390px. */}}
   <div>
-    <div class="label" style="margin:0">Common</div>
+    <div class="label" style="margin:0">Left to spend / month</div>
+    <div class="figure figure--sm tnum" data-tick {{if lt .S.AvailableCents 0}}style="color:var(--color-danger)"{{end}}>{{money .S.AvailableCents .S.Currency}}</div>
+    <div class="auth__meta tnum" style="margin:0">
+      <span {{if lt .S.AAvailableCents 0}}style="color:var(--color-danger)"{{end}}>{{.S.PartnerAName}} {{money .S.AAvailableCents .S.Currency}}</span> ·
+      <span {{if lt .S.BAvailableCents 0}}style="color:var(--color-danger)"{{end}}>{{.S.PartnerBName}} {{money .S.BAvailableCents .S.Currency}}</span>
+    </div>
+  </div>
+  <div>
+    <div class="label" style="margin:0">Common / month</div>
     <div class="figure figure--sm tnum" data-tick>{{money .S.CommonTotalCents .S.Currency}}</div>
+    <div class="auth__meta tnum" style="margin:0">personal {{money .S.APersonalTotalCents .S.Currency}} · {{money .S.BPersonalTotalCents .S.Currency}}</div>
   </div>
   <div>
-    <div class="label" style="margin:0">{{.S.PartnerAName}} personal</div>
-    <div class="figure figure--sm tnum" data-tick>{{money .S.APersonalTotalCents .S.Currency}}</div>
-  </div>
-  <div>
-    <div class="label" style="margin:0">{{.S.PartnerBName}} personal</div>
-    <div class="figure figure--sm tnum" data-tick>{{money .S.BPersonalTotalCents .S.Currency}}</div>
-  </div>
-  <div>
-    <div class="label" style="margin:0">{{.S.PartnerAName}} contributes</div>
+    <div class="label" style="margin:0">{{.S.PartnerAName}} pays out</div>
     <div class="figure figure--sm tnum" data-tick>{{money .S.AContributionCents .S.Currency}}</div>
   </div>
   <div>
-    <div class="label" style="margin:0">{{.S.PartnerBName}} contributes</div>
+    <div class="label" style="margin:0">{{.S.PartnerBName}} pays out</div>
     <div class="figure figure--sm tnum" data-tick>{{money .S.BContributionCents .S.Currency}}</div>
-  </div>
-  <div>
-    <div class="label" style="margin:0">Available</div>
-    <div class="figure figure--sm tnum" data-tick>{{money .S.AvailableCents .S.Currency}}</div>
   </div>
 </div>
 {{end}}

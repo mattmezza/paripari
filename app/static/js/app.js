@@ -44,6 +44,30 @@
     if (e.detail.target.hasAttribute("data-tick-on-swap")) tick(e.detail.target);
   });
 
+  /* ── Validation errors (422) ────────────────────────────────────────────
+     Handlers answer invalid forms with 422 + the re-rendered form (or an
+     inline .helper--error via HX-Retarget). htmx ignores non-2xx by default,
+     so without this the user sees nothing at all. Any HX-Retarget/HX-Reswap
+     the response asked for is already applied by the time this fires. */
+  document.body.addEventListener("htmx:beforeSwap", function (e) {
+    var d = e.detail;
+    if (d.xhr.status !== 422) return;
+    d.shouldSwap = true;
+    d.isError = false;
+    // When the response is a re-render of an element already on the page (same
+    // id on its root), swap it in place instead of into the success path's
+    // target — the expenses form, for one, targets the list it lives inside,
+    // and swapping a form over the list would delete the list.
+    var tpl = document.createElement("template");
+    tpl.innerHTML = d.serverResponse;
+    var root = tpl.content.firstElementChild;
+    var here = root && root.id && document.getElementById(root.id);
+    if (here) {
+      d.target = here;
+      d.swapOverride = "outerHTML";
+    }
+  });
+
   /* ── Copy to clipboard ──────────────────────────────────────────────────
      The label change IS the feedback. No toast. */
   document.addEventListener("click", async function (e) {

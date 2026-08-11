@@ -27,7 +27,7 @@
            shares get a full line and the controls drop below them. */}}
       <div id="expense-row-{{.Exp.ID}}" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding-block:.5rem;border-block-start:1px solid var(--color-rule)">
         <div style="flex:1 1 11rem;min-width:0">
-          <div>{{.Exp.Name}}{{if .Exp.IsSavings}} <span class="pill pill--positive" style="font-size:.6875rem">savings</span>{{end}}</div>
+          <div>{{.Exp.Name}}{{if .Exp.IsSavings}} <span class="pill pill--positive" style="font-size:.6875rem">savings</span>{{end}}{{if .AccountName}} <span class="pill" style="font-size:.6875rem">→ {{.AccountName}}</span>{{end}}</div>
           {{if .OwnerName}}<div class="auth__meta" style="margin:0">{{.OwnerName}}</div>
           {{else}}<div class="auth__meta tnum" style="margin:0">{{$root.PartnerAName}} {{money .ShareACents $root.Currency}} · {{$root.PartnerBName}} {{money .ShareBCents $root.Currency}}</div>{{end}}
         </div>

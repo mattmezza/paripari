@@ -37,7 +37,9 @@
   <div class="card" style="flex:1 1 300px;min-width:0">
     <div class="card__title">{{$ov.A.Name}}</div>
     <dl style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 1rem;margin-block-start:.75rem">
-      <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.NetIncomeCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.NetIncomeCents $ov.Currency}}</dd>
+        {{if $d.GrossAsNetA}}<dd style="margin:.25rem 0 0;font-size:.75rem;color:var(--color-warning-ink)">No deductions recorded, so this equals gross. <a href="/income" class="link">Add them</a></dd>{{end}}
+      </div>
       <div><dt class="label" style="margin:0">Personal expenses</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.PersonalExpensesCents $ov.Currency}}</dd></div>
       <div><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.CommonShareCents $ov.Currency}}</dd></div>
       <div><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.A.AvailableCents $ov.Currency}}</dd></div>
@@ -48,7 +50,9 @@
     <div class="card__title">{{if $d.HasPartner}}{{$ov.B.Name}}{{else}}Partner{{end}}</div>
     {{if $d.HasPartner}}
     <dl style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 1rem;margin-block-start:.75rem">
-      <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.NetIncomeCents $ov.Currency}}</dd></div>
+      <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.NetIncomeCents $ov.Currency}}</dd>
+        {{if $d.GrossAsNetB}}<dd style="margin:.25rem 0 0;font-size:.75rem;color:var(--color-warning-ink)">No deductions recorded, so this equals gross. <a href="/income" class="link">Add them</a></dd>{{end}}
+      </div>
       <div><dt class="label" style="margin:0">Personal expenses</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.PersonalExpensesCents $ov.Currency}}</dd></div>
       <div><dt class="label" style="margin:0">Share of common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.CommonShareCents $ov.Currency}}</dd></div>
       <div><dt class="label" style="margin:0">Available</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $ov.B.AvailableCents $ov.Currency}}</dd></div>

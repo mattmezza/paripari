@@ -1,0 +1,195 @@
+{{define "content"}}
+{{$d := .Data}}
+
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin-block-end:.5rem">
+  <h1 style="margin:0">History</h1>
+  <a class="btn btn--sm" href="/history.csv?range={{$d.Range}}&currency={{$d.Currency}}" download>Export CSV</a>
+</div>
+
+<p class="auth__meta" style="margin-block-end:1rem">
+  Expenses and income here are your <strong>recurring monthly plan</strong> as it stood on each
+  date &mdash; not what you actually spent. The lines stay flat until you change something,
+  then step to the new figure.
+</p>
+
+<div style="display:flex;gap:.5rem;margin-block-end:1rem" role="group" aria-label="Range">
+  <a class="btn btn--sm {{if eq $d.Range "3m"}}btn--primary{{end}}" href="/history?range=3m">3m</a>
+  <a class="btn btn--sm {{if eq $d.Range "12m"}}btn--primary{{end}}" href="/history?range=12m">12m</a>
+  <a class="btn btn--sm {{if eq $d.Range "all"}}btn--primary{{end}}" href="/history?range=all">All</a>
+</div>
+
+<script type="application/json" id="history-payload">{{json $d.Payload}}</script>
+
+{{if $d.Empty}}
+<div class="card" style="margin-block-end:1rem">
+  <div class="card__head"><h2 class="card__title">History starts today</h2></div>
+  <p class="auth__meta">
+    PariPari records one snapshot per day, so there is nothing to plot yet &mdash; come back
+    in a few days and both charts appear here. Today&rsquo;s figures:
+  </p>
+  <ul style="font-size:.875rem;color:var(--color-ink-2);list-style:none;padding:0;display:grid;gap:.375rem;margin:0">
+    <li style="display:flex;justify-content:space-between"><span>Net worth</span><span class="tnum">{{money $d.Today.Total $d.Currency}}</span></li>
+    <li style="display:flex;justify-content:space-between"><span>Monthly income</span><span class="tnum">{{money $d.Today.Income $d.Currency}}</span></li>
+    <li style="display:flex;justify-content:space-between"><span>Monthly expenses</span><span class="tnum">{{money $d.Today.Expenses $d.Currency}}</span></li>
+    <li style="display:flex;justify-content:space-between"><span>Monthly savings</span><span class="tnum">{{money $d.Today.Savings $d.Currency}}</span></li>
+    <li style="display:flex;justify-content:space-between"><span>Disposable</span><span class="tnum">{{money $d.Today.Available $d.Currency}}</span></li>
+  </ul>
+</div>
+{{else}}
+
+{{if $d.HasNetWorth}}
+<div class="card" style="margin-block-end:1rem" x-data="ppHistoryCharts()" x-init="initNetWorth()">
+  <div class="card__head"><h2 class="card__title">Net worth over time</h2></div>
+  <canvas x-ref="networth" style="max-height:260px" aria-label="Net worth over time by bucket" role="img"></canvas>
+</div>
+{{end}}
+
+{{if $d.HasFinance}}
+<div class="card" style="margin-block-end:1rem" x-data="ppHistoryCharts()" x-init="initFinance()">
+  <div class="card__head"><h2 class="card__title">Monthly picture over time</h2></div>
+  <canvas x-ref="finance" style="max-height:260px" aria-label="Monthly income, expenses, savings and disposable income over time" role="img"></canvas>
+</div>
+{{end}}
+
+{{end}}
+
+<div class="card">
+  <div class="card__head"><h2 class="card__title">Data points</h2></div>
+  {{if $d.Rows}}
+  <div class="table-scroll">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th class="num">Net worth</th>
+          <th class="num">Liquid</th>
+          <th class="num">Alt.</th>
+          <th class="num">Property</th>
+          <th class="num">Income</th>
+          <th class="num">Expenses</th>
+          <th class="num">Savings</th>
+          <th class="num">Disposable</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range $d.Rows}}
+        <tr>
+          <td class="tnum">{{.Date}}</td>
+          <td class="num tnum">{{amount .Total $d.Currency}}</td>
+          <td class="num tnum">{{amount .Liquid $d.Currency}}</td>
+          <td class="num tnum">{{amount .Alternative $d.Currency}}</td>
+          <td class="num tnum">{{amount .RealEstate $d.Currency}}</td>
+          <td class="num tnum">{{amount .Income $d.Currency}}</td>
+          <td class="num tnum">{{amount .Expenses $d.Currency}}</td>
+          <td class="num tnum">{{amount .Savings $d.Currency}}</td>
+          <td class="num tnum">{{amount .Available $d.Currency}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <p class="helper" style="margin-block-start:.75rem">All figures in {{$d.Currency}} &middot; {{$d.RangeLabel}}.</p>
+  {{else}}
+  <p class="auth__meta" style="margin:0">No snapshots in this range yet.</p>
+  {{end}}
+</div>
+
+<script>
+function ppHistoryCharts(){
+  // The Chart instance and its spec live in this closure, NOT on the object
+  // Alpine returns: Alpine deep-proxies component state, and wrapping Chart.js's
+  // own options proxy in a second proxy recurses until the stack blows on the
+  // first recolor. Closure variables stay invisible to Alpine.
+  let chart = null, spec = null;
+
+  const payload = () => {
+    const el = document.getElementById('history-payload');
+    try { return el ? JSON.parse(el.textContent) : null; } catch(e){ return null; }
+  };
+  const colors = () => {
+    const s = getComputedStyle(document.documentElement);
+    const v = (n) => s.getPropertyValue(n).trim();
+    return { accent: v('--color-accent'), partnerB: v('--color-partner-b'),
+      positive: v('--color-positive'), warning: v('--color-warning'),
+      muted: v('--color-muted'), rule: v('--color-rule'), ink: v('--color-ink') };
+  };
+  const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const options = (c, cur) => ({
+    responsive: true, maintainAspectRatio: false,
+    animation: reduceMotion() ? false : { duration: 300, easing: 'easeOutQuad' },
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: c.muted, maxTicksLimit: 6, maxRotation: 0 } },
+      y: { grid: { color: c.rule }, ticks: { color: c.muted, callback: (v) => v.toLocaleString() } },
+    },
+    plugins: {
+      legend: { display: true, labels: { color: c.ink, boxWidth: 12, usePointStyle: true } },
+      tooltip: { mode: 'index', intersect: false,
+        callbacks: { label: (i) => i.dataset.label + ': ' + cur + ' ' +
+          i.parsed.y.toLocaleString(undefined, { maximumFractionDigits: 0 }) } },
+    },
+  });
+
+  const recolor = () => {
+    if (!chart || !spec) return;
+    const c = colors();
+    chart.data.datasets.forEach((ds, i) => { ds.borderColor = c[spec[i].token]; });
+    chart.options.scales.y.grid.color = c.rule;
+    chart.options.scales.x.ticks.color = c.muted;
+    chart.options.scales.y.ticks.color = c.muted;
+    chart.options.plugins.legend.labels.color = c.ink;
+    chart.update('none');
+  };
+
+  // spec: [{label, key, token, dashed}] — the tokens are re-resolved on every
+  // theme flip, so dark mode needs no second palette here.
+  const build = (canvas, s, points, cur) => {
+    spec = s;
+    const c = colors();
+    chart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: points.map(pt => pt.d),
+        datasets: s.map(d => ({
+          label: d.label,
+          data: points.map(pt => pt[d.key] / 100),
+          borderColor: c[d.token], borderWidth: 2, borderDash: d.dashed ? [5, 4] : [],
+          pointRadius: 0, pointHoverRadius: 4,
+          tension: 0.35, cubicInterpolationMode: 'monotone', fill: false,
+        })),
+      },
+      options: options(c, cur),
+    });
+    window.addEventListener('pp:theme-changed', recolor);
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', recolor);
+    // The manual toggle flips `dark` on <html>; watch it directly.
+    new MutationObserver(recolor)
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  };
+
+  return {
+    initNetWorth(){
+      const p = payload();
+      if (!p || p.netWorth.length < 2) return;
+      build(this.$refs.networth, [
+        { label: 'Total',       key: 'total',       token: 'accent' },
+        { label: 'Liquid',      key: 'liquid',      token: 'partnerB' },
+        { label: 'Alternative', key: 'alternative', token: 'warning' },
+        { label: 'Real estate', key: 'realEstate',  token: 'muted' },
+      ], p.netWorth, p.currency);
+    },
+    initFinance(){
+      const p = payload();
+      if (!p || p.finance.length < 2) return;
+      build(this.$refs.finance, [
+        { label: 'Income',     key: 'income',    token: 'accent' },
+        { label: 'Expenses',   key: 'expenses',  token: 'warning' },
+        { label: 'Savings',    key: 'savings',   token: 'positive' },
+        { label: 'Disposable', key: 'available', token: 'muted', dashed: true },
+      ], p.finance, p.currency);
+    },
+  };
+}
+</script>
+{{end}}

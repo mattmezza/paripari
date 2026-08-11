@@ -16,8 +16,11 @@
 // Defined once at page load so it's ready before x-init runs on the swapped
 // impact-panel chart (see partials/trips-detail.html).
 function ppTripChart(){
+  // Chart lives in this closure, never on the Alpine component: Alpine deep-proxies
+  // state, and its proxy around Chart.js's own options proxy overflows the stack
+  // on the first theme flip.
+  let chart = null;
   return {
-    chart: null,
     init(){
       const el = document.getElementById('trip-compare-json');
       let data = {series:[]};
@@ -26,7 +29,7 @@ function ppTripChart(){
       const v = (n) => s.getPropertyValue(n).trim();
       const colors = { accent: v('--color-accent'), 'partner-b': v('--color-partner-b'), muted: v('--color-muted'), rule: v('--color-rule'), ink: v('--color-ink') };
       const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      this.chart = new Chart(this.$refs.canvas.getContext('2d'), {
+      chart = new Chart(this.$refs.canvas.getContext('2d'), {
         type: 'line',
         data: { datasets: data.series.map((ser) => ({
           label: ser.name,

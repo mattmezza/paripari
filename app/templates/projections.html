@@ -18,14 +18,14 @@
     </div>
 
     <div class="field" style="margin-block-start:1rem">
-      <label class="label" for="return-rate">Annual return rate</label>
+      <label class="label" for="return-rate">Assumed annual return</label>
       <div style="display:flex;align-items:center;gap:.75rem">
         <input type="range" id="return-rate" min="0" max="0.08" step="0.005" value="{{$d.Rate}}"
           name="rate" style="flex:1;accent-color:var(--color-accent)"
           oninput="document.getElementById('rate-readout').textContent = (this.value*100).toFixed(1) + '%'">
         <span class="figure figure--sm" id="rate-readout" style="min-width:4.5ch;text-align:right">{{pct $d.Rate}}</span>
       </div>
-      <span class="helper">0% for cash, 4-7% for a diversified investment mix.</span>
+      <span class="helper" style="min-height:0">Assumed growth of the whole projected balance, compounded monthly — not a share of your assets. 0% for cash, 4-7% for a diversified investment mix.</span>
     </div>
 
     {{if $d.Scenarios}}
@@ -50,13 +50,16 @@
 
 <script>
 function ppProjectionChart(){
+  // Chart lives in this closure, never on the Alpine component: Alpine deep-proxies
+  // state, and its proxy around Chart.js's own options proxy overflows the stack
+  // on the first theme flip.
+  let chart = null;
   return {
-    chart: null,
     data: null,
     init(){
       this.data = this.readData();
       const c = this.colors();
-      this.chart = new Chart(this.$refs.canvas.getContext('2d'), {
+      chart = new Chart(this.$refs.canvas.getContext('2d'), {
         type: 'line',
         data: this.buildData(c),
         options: this.buildOptions(c),
@@ -147,15 +150,15 @@ function ppProjectionChart(){
     refresh(){
       this.data = this.readData();
       const c = this.colors();
-      this.chart.data = this.buildData(c);
-      this.chart.options.plugins.legend.display = this.data.series.length > 1;
-      this.chart.update();
+      chart.data = this.buildData(c);
+      chart.options.plugins.legend.display = this.data.series.length > 1;
+      chart.update();
     },
     recolor(){
       const c = this.colors();
-      this.chart.data = this.buildData(c);
-      this.chart.options = this.buildOptions(c);
-      this.chart.update('none');
+      chart.data = this.buildData(c);
+      chart.options = this.buildOptions(c);
+      chart.update('none');
     },
   };
 }

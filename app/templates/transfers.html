@@ -8,6 +8,8 @@
   </form>
 </div>
 
+<p class="helper" style="margin-block-end:1rem">Common expenses are split by your household method; each expense goes to its own budget account, or to the common checking account (common savings when tagged as savings) when it names none.</p>
+
 {{if not $d.Confirmed}}
 <div class="flash" style="margin-block-end:1.25rem">
   <span class="flash__mark">·</span>
@@ -20,29 +22,32 @@
 </div>
 {{end}}
 
-<div class="card">
-  <div class="table-scroll">
-    <table class="table">
-      <thead><tr><th>From</th><th>To</th><th class="num">Amount</th><th>Reference</th></tr></thead>
-      <tbody>
-        {{range $d.Rows}}
-        <tr>
-          <td>{{.From}}</td>
-          <td>{{.To}}</td>
-          <td class="num" data-tick>
-            <span>{{money .AmountCents .Currency}}</span>
-            {{if .DeltaLabel}}<span class="pill pill--attention" style="margin-inline-start:.375rem">{{.DeltaLabel}}</span>{{end}}
-            <button type="button" class="btn btn--ghost btn--sm" data-copy="{{.AmountPlain}}" aria-label="Copy amount for {{.To}}">Copy</button>
-          </td>
-          <td>
-            {{.Reference}}
-            <button type="button" class="btn btn--ghost btn--sm" data-copy="{{if .ToIBAN}}{{.ToIBAN}}{{else}}{{.To}}{{end}}" aria-label="Copy reference for {{.To}}">Copy</button>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
+{{/* Cards, not a table: four columns plus two copy buttons cannot fit 380px,
+     and this is the screen you read standing at your banking app. Wide
+     viewports get the same cards two-up. */}}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:.75rem">
+  {{range $d.Rows}}
+  <div class="card">
+    <div class="auth__meta" style="margin:0 0 .25rem">{{.From}} &rarr; <strong style="color:var(--color-ink)">{{.To}}</strong></div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem">
+      <p class="figure figure--sm tnum" style="margin:0" data-tick>{{money .AmountCents .Currency}}</p>
+      {{if .DeltaLabel}}<span class="pill pill--attention">{{.DeltaLabel}}</span>{{end}}
+      <span class="auth__meta" style="margin:0">/ month</span>
+    </div>
+
+    <p class="auth__meta" style="margin:.375rem 0 .75rem">{{.Reference}}</p>
+
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+      <button type="button" class="btn btn--ghost btn--sm" data-copy="{{.AmountPlain}}"
+        aria-label="Copy amount for {{.To}}">Copy amount</button>
+      <button type="button" class="btn btn--ghost btn--sm" data-copy="{{if .ToIBAN}}{{.ToIBAN}}{{else}}{{.To}}{{end}}"
+        aria-label="Copy {{if .ToIBAN}}IBAN{{else}}reference{{end}} for {{.To}}">Copy {{if .ToIBAN}}IBAN{{else}}reference{{end}}</button>
+    </div>
   </div>
-  {{if not $d.Rows}}<p class="helper">No common expenses to split yet — add some on the Expenses page.</p>{{end}}
+  {{end}}
 </div>
+{{if not $d.Rows}}
+<div class="card"><p class="helper" style="margin:0">No common expenses to split yet &mdash; add some on the Expenses page.</p></div>
+{{end}}
 {{end}}

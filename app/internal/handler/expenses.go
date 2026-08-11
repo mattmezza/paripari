@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/mattmezza/paripari/internal/jobs"
 	"net/http"
 	"strconv"
 
@@ -17,6 +18,7 @@ type expenseRowView struct {
 	AmountStr                string // plain decimal for the inline-edit input, e.g. "1234.50"
 	OwnerName                string // personal rows only
 	ShareACents, ShareBCents int64  // common rows only
+	AccountName              string // budget-holder account, when the expense names one
 }
 
 type expenseGroupView struct {
@@ -48,6 +50,8 @@ type expensesSummaryView struct {
 	AContributionCents         int64
 	BContributionCents         int64
 	AvailableCents             int64
+	AAvailableCents            int64
+	BAvailableCents            int64
 	PartnerAName, PartnerBName string
 }
 
@@ -60,6 +64,8 @@ func newExpensesSummaryView(ov service.MonthlyOverview) expensesSummaryView {
 		AContributionCents:  ov.A.TotalOutCents,
 		BContributionCents:  ov.B.TotalOutCents,
 		AvailableCents:      ov.AvailableCents,
+		AAvailableCents:     ov.A.AvailableCents,
+		BAvailableCents:     ov.B.AvailableCents,
 		PartnerAName:        ov.A.Name,
 		PartnerBName:        ov.B.Name,
 	}
@@ -84,7 +90,9 @@ type expenseFormData struct {
 	PartnerBID   int64
 	PartnerBName string
 	HasPartner   bool
-	OwnerIsB     bool // Exp.UserID belongs to partner B — *int64 doesn't compare cleanly in templates
+	Accounts     []model.Account
+	AccountID    int64 // 0 = household default
+	OwnerIsB     bool  // Exp.UserID belongs to partner B — *int64 doesn't compare cleanly in templates
 }
 
 func registerExpenses(mux *http.ServeMux, d *Deps) {
@@ -113,7 +121,7 @@ func registerExpenses(mux *http.ServeMux, d *Deps) {
 			uid := sess.User.ID
 			exp.UserID = &uid
 		}
-		d.View.Partial(w, "partials/expenses-form", newExpenseFormData(exp, sess, true))
+		d.View.Partial(w, "partials/expenses-form", newExpenseFormData(exp, sess, true, householdAccounts(d, sess)))
 	})
 
 	mux.HandleFunc("GET /expenses/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
@@ -124,15 +132,19 @@ func registerExpenses(mux *http.ServeMux, d *Deps) {
 			http.NotFound(w, r)
 			return
 		}
-		d.View.Partial(w, "partials/expenses-form", newExpenseFormData(*exp, sess, false))
+		d.View.Partial(w, "partials/expenses-form", newExpenseFormData(*exp, sess, false, householdAccounts(d, sess)))
 	})
 
 	mux.HandleFunc("POST /expenses", func(w http.ResponseWriter, r *http.Request) {
 		sess := auth.FromContext(r)
-		exp, formErr := parseExpenseForm(r, sess, nil)
+		exp, formErr := parseExpenseForm(r, sess, nil, householdAccounts(d, sess))
 		if formErr != "" {
-			f := newExpenseFormData(exp, sess, true)
+			f := newExpenseFormData(exp, sess, true, householdAccounts(d, sess))
 			f.Error = formErr
+			// The form's hx-target is the list it lives inside; on the error
+			// branch it must replace itself, not the list.
+			w.Header().Set("HX-Retarget", "#expenses-form-new")
+			w.Header().Set("HX-Reswap", "outerHTML")
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			d.View.Partial(w, "partials/expenses-form", f)
 			return
@@ -152,10 +164,12 @@ func registerExpenses(mux *http.ServeMux, d *Deps) {
 			http.NotFound(w, r)
 			return
 		}
-		exp, formErr := parseExpenseForm(r, sess, existing)
+		exp, formErr := parseExpenseForm(r, sess, existing, householdAccounts(d, sess))
 		if formErr != "" {
-			f := newExpenseFormData(exp, sess, false)
+			f := newExpenseFormData(exp, sess, false, householdAccounts(d, sess))
 			f.Error = formErr
+			w.Header().Set("HX-Retarget", "#expenses-form-"+strconv.FormatInt(id, 10))
+			w.Header().Set("HX-Reswap", "outerHTML")
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			d.View.Partial(w, "partials/expenses-form", f)
 			return
@@ -185,6 +199,11 @@ func registerExpenses(mux *http.ServeMux, d *Deps) {
 // is the boring, always-correct way to keep subtotals in sync — the household
 // has at most a few dozen expenses, so recomputing all of them costs nothing.
 func writeExpensesList(d *Deps, w http.ResponseWriter, r *http.Request, filter string) {
+	// Every path here follows a mutation, so record the household's monthly
+	// picture: /history charts income and expenses over time from these.
+	if sess := auth.FromContext(r); sess != nil {
+		jobs.SnapshotHousehold(r.Context(), sess.Household.ID)
+	}
 	in, err := BuildInputs(d, r)
 	if err != nil {
 		http.Error(w, "could not load household", http.StatusInternalServerError)
@@ -201,10 +220,13 @@ func writeExpensesList(d *Deps, w http.ResponseWriter, r *http.Request, filter s
 	d.View.Partial(w, "partials/expenses-summary", newExpensesSummaryView(service.BuildOverview(in)))
 }
 
-func newExpenseFormData(exp model.Expense, sess *auth.Session, isNew bool) *expenseFormData {
+func newExpenseFormData(exp model.Expense, sess *auth.Session, isNew bool, accounts []model.Account) *expenseFormData {
 	f := &expenseFormData{
 		Exp: exp, AmountStr: CentsToStr(exp.AmountCents), IsNew: isNew, CSRF: sess.Token, Currencies: view.Currencies,
-		PartnerAID: sess.User.ID, PartnerAName: sess.User.Name,
+		PartnerAID: sess.User.ID, PartnerAName: sess.User.Name, Accounts: accounts,
+	}
+	if exp.AccountID != nil {
+		f.AccountID = *exp.AccountID
 	}
 	if sess.Partner != nil {
 		f.PartnerBID, f.PartnerBName, f.HasPartner = sess.Partner.ID, sess.Partner.Name, true
@@ -213,7 +235,18 @@ func newExpenseFormData(exp model.Expense, sess *auth.Session, isNew bool) *expe
 	return f
 }
 
-func parseExpenseForm(r *http.Request, sess *auth.Session, existing *model.Expense) (model.Expense, string) {
+// householdAccounts lists the accounts an expense can be routed to. A store
+// error just means "no accounts to choose from" — the select falls back to the
+// household default, which is what a NULL account_id means anyway.
+func householdAccounts(d *Deps, sess *auth.Session) []model.Account {
+	accounts, err := d.Store.Accounts(sess.Household.ID)
+	if err != nil {
+		return nil
+	}
+	return accounts
+}
+
+func parseExpenseForm(r *http.Request, sess *auth.Session, existing *model.Expense, accounts []model.Account) (model.Expense, string) {
 	r.ParseForm()
 	exp := model.Expense{HouseholdID: sess.Household.ID}
 	if existing != nil {
@@ -250,6 +283,21 @@ func parseExpenseForm(r *http.Request, sess *auth.Session, existing *model.Expen
 		// dashboard's Savings figure — the subcategory wins.
 		exp.IsSavings = true
 	}
+	if r.PostForm.Has("account_id") {
+		exp.AccountID = nil
+		if v := r.PostFormValue("account_id"); v != "" {
+			id, _ := strconv.ParseInt(v, 10, 64)
+			for _, a := range accounts {
+				if a.ID == id {
+					exp.AccountID = &a.ID
+					break
+				}
+			}
+			if exp.AccountID == nil {
+				return exp, "That account doesn't belong to this household."
+			}
+		}
+	}
 	if r.PostForm.Has("category") {
 		exp.Category = r.PostFormValue("category")
 		if exp.Category != "personal" {
@@ -280,6 +328,11 @@ func buildExpensesData(in service.Inputs, filter string) *expensesData {
 	incomes := service.PartnerIncomes(in.Incomes, in.Rates, in.Display)
 	ratio := service.SplitRatio(in.Household, incomes, in.PartnerA.ID, in.PartnerB.ID)
 
+	accountNames := map[int64]string{}
+	for _, a := range in.Accounts {
+		accountNames[a.ID] = a.Name
+	}
+
 	names := map[int64]string{in.PartnerA.ID: in.PartnerA.Name}
 	if in.PartnerB.ID != 0 {
 		names[in.PartnerB.ID] = in.PartnerB.Name
@@ -299,6 +352,9 @@ func buildExpensesData(in service.Inputs, filter string) *expensesData {
 			order = append(order, key)
 		}
 		row := expenseRowView{Exp: e, AmountStr: CentsToStr(e.AmountCents)}
+		if e.AccountID != nil {
+			row.AccountName = accountNames[*e.AccountID]
+		}
 		if e.Category == "common" {
 			row.ShareACents, row.ShareBCents = service.ShareOf(e.AmountCents, ratio)
 		} else if e.UserID != nil {

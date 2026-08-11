@@ -15,7 +15,7 @@
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
     <div class="field">
-      <label class="label" for="exp-amount-{{$fid}}">Amount</label>
+      <label class="label" for="exp-amount-{{$fid}}">Amount / month</label>
       <input class="input input--figure" id="exp-amount-{{$fid}}" name="amount" inputmode="decimal" value="{{.AmountStr}}">
     </div>
     <div class="field">
@@ -55,6 +55,15 @@
         <option value="true" {{if .Exp.IsSavings}}selected{{end}}>Savings</option>
       </select>
     </div>
+  </div>
+
+  <div class="field">
+    <label class="label" for="exp-account-{{$fid}}">Budget account</label>
+    <select class="select" id="exp-account-{{$fid}}" name="account_id">
+      <option value="">Common checking (default)</option>
+      {{range .Accounts}}<option value="{{.ID}}" {{if eq .ID $.AccountID}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+    <p class="helper">Where the contributions for this expense are accumulated. Left on the default, common expenses go to the common checking account — or common savings when tagged as savings.</p>
   </div>
 
   <div style="display:flex;gap:.5rem;margin-block-start:1.25rem">

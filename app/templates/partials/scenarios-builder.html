@@ -68,125 +68,143 @@
       </select>
     </div>
 
-    <div x-show="type === 'expense_amount'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr">
-      <div class="field">
-        <label class="label" for="target_expense">Expense</label>
-        <select class="select" id="target_expense" name="target_expense">
+    <fieldset :disabled="type !== 'expense_amount'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'expense_amount'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr">
+        <div class="field">
+          <label class="label" for="target_expense">Expense</label>
+          <select class="select" id="target_expense" name="target_expense">
+            {{range .Expenses}}<option value="{{.ID}}">{{.Name}} ({{money .AmountCents .Currency}})</option>{{end}}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="ea-amount">New amount</label>
+          <input class="input input--figure" id="ea-amount" name="amount" inputmode="decimal" placeholder="0.00">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset :disabled="type !== 'expense_add'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'expense_add'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr 1fr">
+        <div class="field">
+          <label class="label" for="exa-label">Name</label>
+          <input class="input" id="exa-label" name="label" placeholder="New car lease">
+        </div>
+        <div class="field">
+          <label class="label" for="exa-amount">Monthly amount</label>
+          <input class="input input--figure" id="exa-amount" name="amount" inputmode="decimal" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label class="label" for="exa-currency">Currency</label>
+          <select class="select" id="exa-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
+        </div>
+        <div class="field">
+          <label class="label" for="exa-subcategory">Subcategory</label>
+          <input class="input" id="exa-subcategory" name="subcategory" placeholder="e.g. transport, savings">
+        </div>
+        <div class="field">
+          <label class="label" for="exa-target">Who pays</label>
+          <select class="select" id="exa-target" name="target_user">
+            <option value="">Common (split)</option>
+            <option value="{{.PartnerA.ID}}">{{.PartnerA.Name}} (personal)</option>
+            {{if .PartnerB.ID}}<option value="{{.PartnerB.ID}}">{{.PartnerB.Name}} (personal)</option>{{end}}
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset :disabled="type !== 'expense_remove'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'expense_remove'" class="field">
+        <label class="label" for="target_expense_rm">Expense</label>
+        <select class="select" id="target_expense_rm" name="target_expense">
           {{range .Expenses}}<option value="{{.ID}}">{{.Name}} ({{money .AmountCents .Currency}})</option>{{end}}
         </select>
       </div>
-      <div class="field">
-        <label class="label" for="ea-amount">New amount</label>
-        <input class="input input--figure" id="ea-amount" name="amount" inputmode="decimal" placeholder="0.00">
-      </div>
-    </div>
+    </fieldset>
 
-    <div x-show="type === 'expense_add'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr 1fr">
-      <div class="field">
-        <label class="label" for="exa-label">Name</label>
-        <input class="input" id="exa-label" name="label" placeholder="New car lease">
+    <fieldset :disabled="type !== 'income_amount'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'income_amount'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr">
+        <div class="field">
+          <label class="label" for="target_income">Income source</label>
+          <select class="select" id="target_income" name="target_income">
+            {{range .Incomes}}<option value="{{.ID}}">{{.Name}} ({{money .GrossYearlyCents .Currency}}/yr)</option>{{end}}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="ia-amount">New gross yearly</label>
+          <input class="input input--figure" id="ia-amount" name="amount" inputmode="decimal" placeholder="0.00">
+        </div>
       </div>
-      <div class="field">
-        <label class="label" for="exa-amount">Monthly amount</label>
-        <input class="input input--figure" id="exa-amount" name="amount" inputmode="decimal" placeholder="0.00">
-      </div>
-      <div class="field">
-        <label class="label" for="exa-currency">Currency</label>
-        <select class="select" id="exa-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
-      </div>
-      <div class="field">
-        <label class="label" for="exa-subcategory">Subcategory</label>
-        <input class="input" id="exa-subcategory" name="subcategory" placeholder="e.g. transport, savings">
-      </div>
-      <div class="field">
-        <label class="label" for="exa-target">Who pays</label>
-        <select class="select" id="exa-target" name="target_user">
-          <option value="">Common (split)</option>
-          <option value="{{.PartnerA.ID}}">{{.PartnerA.Name}} (personal)</option>
-          {{if .PartnerB.ID}}<option value="{{.PartnerB.ID}}">{{.PartnerB.Name}} (personal)</option>{{end}}
-        </select>
-      </div>
-    </div>
+    </fieldset>
 
-    <div x-show="type === 'expense_remove'" class="field">
-      <label class="label" for="target_expense_rm">Expense</label>
-      <select class="select" id="target_expense_rm" name="target_expense">
-        {{range .Expenses}}<option value="{{.ID}}">{{.Name}} ({{money .AmountCents .Currency}})</option>{{end}}
-      </select>
-    </div>
+    <fieldset :disabled="type !== 'income_add'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'income_add'" style="display:grid;gap:.75rem;grid-template-columns:1fr 2fr 1fr 1fr 1fr">
+        <div class="field">
+          <label class="label" for="ina-target">Partner</label>
+          <select class="select" id="ina-target" name="target_user">
+            <option value="{{.PartnerA.ID}}">{{.PartnerA.Name}}</option>
+            {{if .PartnerB.ID}}<option value="{{.PartnerB.ID}}">{{.PartnerB.Name}}</option>{{end}}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="ina-label">Name</label>
+          <input class="input" id="ina-label" name="label" placeholder="Freelance work">
+        </div>
+        <div class="field">
+          <label class="label" for="ina-amount">Gross yearly</label>
+          <input class="input input--figure" id="ina-amount" name="amount" inputmode="decimal" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label class="label" for="ina-currency">Currency</label>
+          <select class="select" id="ina-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
+        </div>
+        <div class="field">
+          <label class="label" for="ina-kind">Kind</label>
+          <select class="select" id="ina-kind" name="kind"><option value="fixed">Fixed</option><option value="variable">Variable</option></select>
+        </div>
+      </div>
+    </fieldset>
 
-    <div x-show="type === 'income_amount'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr">
-      <div class="field">
-        <label class="label" for="target_income">Income source</label>
-        <select class="select" id="target_income" name="target_income">
+    <fieldset :disabled="type !== 'income_remove'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'income_remove'" class="field">
+        <label class="label" for="target_income_rm">Income source</label>
+        <select class="select" id="target_income_rm" name="target_income">
           {{range .Incomes}}<option value="{{.ID}}">{{.Name}} ({{money .GrossYearlyCents .Currency}}/yr)</option>{{end}}
         </select>
       </div>
-      <div class="field">
-        <label class="label" for="ia-amount">New gross yearly</label>
-        <input class="input input--figure" id="ia-amount" name="amount" inputmode="decimal" placeholder="0.00">
-      </div>
-    </div>
+    </fieldset>
 
-    <div x-show="type === 'income_add'" style="display:grid;gap:.75rem;grid-template-columns:1fr 2fr 1fr 1fr 1fr">
-      <div class="field">
-        <label class="label" for="ina-target">Partner</label>
-        <select class="select" id="ina-target" name="target_user">
-          <option value="{{.PartnerA.ID}}">{{.PartnerA.Name}}</option>
-          {{if .PartnerB.ID}}<option value="{{.PartnerB.ID}}">{{.PartnerB.Name}}</option>{{end}}
+    <fieldset :disabled="type !== 'return_rate'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'return_rate'" class="field">
+        <label class="label" for="rate_pct">New annual return rate (%)</label>
+        <input class="input" id="rate_pct" name="rate_pct" type="number" min="0" max="20" step="0.5" placeholder="5">
+      </div>
+    </fieldset>
+
+    <fieldset :disabled="type !== 'asset_add'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'asset_add'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr 1fr">
+        <div class="field">
+          <label class="label" for="asa-label">Name</label>
+          <input class="input" id="asa-label" name="label" placeholder="Rental property">
+        </div>
+        <div class="field">
+          <label class="label" for="asa-amount">Estimated value</label>
+          <input class="input input--figure" id="asa-amount" name="amount" inputmode="decimal" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label class="label" for="asa-currency">Currency</label>
+          <select class="select" id="asa-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset :disabled="type !== 'asset_remove'" style="border:0;padding:0;margin:0;min-width:0">
+      <div x-show="type === 'asset_remove'" class="field">
+        <label class="label" for="target_asset_rm">Asset</label>
+        <select class="select" id="target_asset_rm" name="target_asset">
+          {{range .Assets}}<option value="{{.ID}}">{{.Name}} ({{money .EstimatedValueCents .Currency}})</option>{{end}}
         </select>
       </div>
-      <div class="field">
-        <label class="label" for="ina-label">Name</label>
-        <input class="input" id="ina-label" name="label" placeholder="Freelance work">
-      </div>
-      <div class="field">
-        <label class="label" for="ina-amount">Gross yearly</label>
-        <input class="input input--figure" id="ina-amount" name="amount" inputmode="decimal" placeholder="0.00">
-      </div>
-      <div class="field">
-        <label class="label" for="ina-currency">Currency</label>
-        <select class="select" id="ina-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
-      </div>
-      <div class="field">
-        <label class="label" for="ina-kind">Kind</label>
-        <select class="select" id="ina-kind" name="kind"><option value="fixed">Fixed</option><option value="variable">Variable</option></select>
-      </div>
-    </div>
-
-    <div x-show="type === 'income_remove'" class="field">
-      <label class="label" for="target_income_rm">Income source</label>
-      <select class="select" id="target_income_rm" name="target_income">
-        {{range .Incomes}}<option value="{{.ID}}">{{.Name}} ({{money .GrossYearlyCents .Currency}}/yr)</option>{{end}}
-      </select>
-    </div>
-
-    <div x-show="type === 'return_rate'" class="field">
-      <label class="label" for="rate_pct">New annual return rate (%)</label>
-      <input class="input" id="rate_pct" name="rate_pct" type="number" min="0" max="20" step="0.5" placeholder="5">
-    </div>
-
-    <div x-show="type === 'asset_add'" style="display:grid;gap:.75rem;grid-template-columns:2fr 1fr 1fr">
-      <div class="field">
-        <label class="label" for="asa-label">Name</label>
-        <input class="input" id="asa-label" name="label" placeholder="Rental property">
-      </div>
-      <div class="field">
-        <label class="label" for="asa-amount">Estimated value</label>
-        <input class="input input--figure" id="asa-amount" name="amount" inputmode="decimal" placeholder="0.00">
-      </div>
-      <div class="field">
-        <label class="label" for="asa-currency">Currency</label>
-        <select class="select" id="asa-currency" name="currency">{{range .Currencies}}<option value="{{.}}" {{if eq . $.Currency}}selected{{end}}>{{.}}</option>{{end}}</select>
-      </div>
-    </div>
-
-    <div x-show="type === 'asset_remove'" class="field">
-      <label class="label" for="target_asset_rm">Asset</label>
-      <select class="select" id="target_asset_rm" name="target_asset">
-        {{range .Assets}}<option value="{{.ID}}">{{.Name}} ({{money .EstimatedValueCents .Currency}})</option>{{end}}
-      </select>
-    </div>
+    </fieldset>
 
     <div style="display:flex;gap:.5rem;justify-self:start">
       <button class="btn btn--primary" type="submit">Add change</button>

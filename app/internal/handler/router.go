@@ -44,6 +44,7 @@ func New(d *Deps) http.Handler {
 	registerScenarios(app, d)
 	registerTrips(app, d)
 	registerProjections(app, d)
+	registerHistory(app, d)
 	registerSettings(app, d)
 
 	root := http.NewServeMux()

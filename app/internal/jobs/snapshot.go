@@ -91,11 +91,63 @@ func (s *Snapshotter) SnapshotHousehold(ctx context.Context, householdID int64) 
 		GoldPricePerGramCents: pricePerGramCHF,
 	})
 
-	return s.db.PutSnapshot(&model.NetWorthSnapshot{
+	if err := s.db.PutSnapshot(&model.NetWorthSnapshot{
 		HouseholdID:      householdID,
 		LiquidCents:      nw.LiquidCents,
 		AlternativeCents: nw.AlternativeCents,
 		RealEstateCents:  nw.RealEstateCents,
+	}); err != nil {
+		return err
+	}
+	return s.snapshotFinancial(householdID)
+}
+
+// snapshotFinancial upserts today's monthly cash-flow picture (in CHF).
+// Expenses are a recurring monthly model, so this records "what the monthly
+// picture looked like today" rather than actual spend — flat between edits.
+func (s *Snapshotter) snapshotFinancial(householdID int64) error {
+	hh, err := s.db.Household(householdID)
+	if err != nil {
+		return err
+	}
+	users, err := s.db.UsersByHousehold(householdID)
+	if err != nil {
+		return err
+	}
+	incomes, err := s.db.Incomes(householdID)
+	if err != nil {
+		return err
+	}
+	expenses, err := s.db.Expenses(householdID)
+	if err != nil {
+		return err
+	}
+
+	in := service.Inputs{
+		Household: *hh,
+		Incomes:   incomes,
+		Expenses:  expenses,
+		Rates:     s.rates,
+		Display:   "CHF",
+	}
+	// UsersByHousehold orders by id, which is the PartnerA/PartnerB convention.
+	if len(users) > 0 {
+		in.PartnerA = users[0]
+	}
+	if len(users) > 1 {
+		in.PartnerB = users[1]
+	}
+	ov := service.BuildOverview(in)
+
+	return s.db.PutFinancialSnapshot(&model.FinancialSnapshot{
+		HouseholdID:           householdID,
+		Currency:              "CHF",
+		IncomeCents:           ov.TotalIncomeCents,
+		ExpensesCents:         ov.CommonExpensesCents + ov.PersonalExpensesCents,
+		SavingsCents:          ov.TotalSavingsCents,
+		AvailableCents:        ov.AvailableCents,
+		CommonExpensesCents:   ov.CommonExpensesCents,
+		PersonalExpensesCents: ov.PersonalExpensesCents,
 	})
 }
 

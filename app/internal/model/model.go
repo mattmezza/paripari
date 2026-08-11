@@ -63,7 +63,10 @@ type Expense struct {
 	UserID      *int64 // set iff personal
 	Subcategory string
 	IsSavings   bool
-	CreatedAt   string
+	// AccountID is the budget-holder account this expense is accumulated in.
+	// nil means the household default (common savings / common checking).
+	AccountID *int64
+	CreatedAt string
 }
 
 type Account struct {
@@ -191,4 +194,22 @@ type TransferConfirmation struct {
 	HouseholdID int64
 	Payload     string // JSON snapshot of confirmed transfer amounts
 	ConfirmedAt string
+}
+
+// FinancialSnapshot is the household's monthly cash-flow picture as it stood
+// on Date. Because expenses are a recurring monthly model rather than
+// transactions, consecutive rows are flat until something is edited — the
+// history is a step function, not a spend log. Amounts are CHF-converted at
+// snapshot time.
+type FinancialSnapshot struct {
+	ID                    int64
+	HouseholdID           int64
+	Date                  string // YYYY-MM-DD
+	Currency              string
+	IncomeCents           int64
+	ExpensesCents         int64 // non-savings expenses, both partners
+	SavingsCents          int64
+	AvailableCents        int64 // disposable: income minus everything out
+	CommonExpensesCents   int64
+	PersonalExpensesCents int64
 }

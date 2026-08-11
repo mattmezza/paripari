@@ -54,6 +54,9 @@ type projectionsViewData struct {
 	Currency     string
 
 	StartCents          int64
+	LiquidCents         int64 // accounts of every purpose, part of StartCents
+	GoldCents           int64 // part of StartCents
+	PropertyCents       int64 // part of StartCents
 	SurplusCents        int64
 	ValueAtHorizonCents int64
 	ContributedCents    int64
@@ -93,6 +96,7 @@ func projectionsData(d *Deps, in service.Inputs, r *http.Request) *projectionsVi
 	pd := &projectionsViewData{
 		HorizonYears: horizon, Rate: rate, RatePct: int(rate*200 + 0.5), Currency: in.Display,
 		StartCents: nw.TotalCents, SurplusCents: ov.SurplusCents,
+		LiquidCents: nw.LiquidCents, GoldCents: nw.AlternativeCents, PropertyCents: nw.RealEstateCents,
 		ValueAtHorizonCents: last.BalanceCents, ContributedCents: contributed, GrowthCents: growth,
 		Goals: goals,
 	}

@@ -38,6 +38,7 @@
   {{- else if eq . "goals"}}<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>
   {{- else if eq . "scenarios"}}<path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
   {{- else if eq . "trips"}}<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>
+  {{- else if eq . "history"}}<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3 4v4h4"/><path d="M12 7.5V12l3 1.75"/>
   {{- else if eq . "settings"}}<path d="M4 7h9M17.5 7H20M4 17h3.5M12 17h8"/><circle cx="15" cy="7" r="2.2"/><circle cx="9.5" cy="17" r="2.2"/>
   {{- else if eq . "close"}}<path d="M6 6l12 12M18 6 6 18"/>
   {{- else if eq . "sun"}}<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
@@ -68,6 +69,7 @@
   <a href="/net-worth"   class="nav__link" {{if eq .Path "/net-worth"}}aria-current="page"{{end}}>{{template "nav-icon" "net-worth"}}Net worth</a>
   <a href="/gold"        class="nav__link" {{if eq .Path "/gold"}}aria-current="page"{{end}}>{{template "nav-icon" "gold"}}Gold</a>
   <a href="/trips"       class="nav__link" {{if eq .Path "/trips"}}aria-current="page"{{end}}>{{template "nav-icon" "trips"}}Trips</a>
+  <a href="/history"     class="nav__link" {{if eq .Path "/history"}}aria-current="page"{{end}}>{{template "nav-icon" "history"}}History</a>
 
   <div style="margin-block-start:auto;padding-block-start:1rem">
     <a href="/settings" class="nav__link" {{if eq .Path "/settings"}}aria-current="page"{{end}}>{{template "nav-icon" "settings"}}Settings</a>
@@ -112,6 +114,7 @@
     <a href="/net-worth" class="nav__link">{{template "nav-icon" "net-worth"}}Net worth</a>
     <a href="/gold"      class="nav__link">{{template "nav-icon" "gold"}}Gold</a>
     <a href="/trips"     class="nav__link">{{template "nav-icon" "trips"}}Trips</a>
+    <a href="/history"   class="nav__link">{{template "nav-icon" "history"}}History</a>
     <a href="/settings"  class="nav__link">{{template "nav-icon" "settings"}}Settings</a>
     <button type="button" class="nav__link" data-theme-toggle aria-pressed="false"
             style="background:none;border:0;cursor:pointer;text-align:start;width:100%">

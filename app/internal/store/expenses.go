@@ -2,20 +2,20 @@ package store
 
 import "github.com/mattmezza/paripari/internal/model"
 
-const expenseCols = `id, household_id, name, amount_cents, currency, category, user_id, subcategory, is_savings, created_at`
+const expenseCols = `id, household_id, name, amount_cents, currency, category, user_id, subcategory, is_savings, account_id, created_at`
 
 func scanExpense(sc interface{ Scan(...any) error }) (model.Expense, error) {
 	var e model.Expense
 	err := sc.Scan(&e.ID, &e.HouseholdID, &e.Name, &e.AmountCents, &e.Currency, &e.Category,
-		&e.UserID, &e.Subcategory, &e.IsSavings, &e.CreatedAt)
+		&e.UserID, &e.Subcategory, &e.IsSavings, &e.AccountID, &e.CreatedAt)
 	return e, err
 }
 
 func (s *Store) CreateExpense(e *model.Expense) (int64, error) {
 	res, err := s.DB.Exec(`INSERT INTO expenses
-		(household_id, name, amount_cents, currency, category, user_id, subcategory, is_savings, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		e.HouseholdID, e.Name, e.AmountCents, e.Currency, e.Category, e.UserID, e.Subcategory, e.IsSavings, now())
+		(household_id, name, amount_cents, currency, category, user_id, subcategory, is_savings, account_id, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		e.HouseholdID, e.Name, e.AmountCents, e.Currency, e.Category, e.UserID, e.Subcategory, e.IsSavings, e.AccountID, now())
 	if err != nil {
 		return 0, err
 	}
@@ -24,8 +24,8 @@ func (s *Store) CreateExpense(e *model.Expense) (int64, error) {
 
 func (s *Store) UpdateExpense(e *model.Expense) error {
 	_, err := s.DB.Exec(`UPDATE expenses SET name = ?, amount_cents = ?, currency = ?, category = ?,
-		user_id = ?, subcategory = ?, is_savings = ? WHERE id = ? AND household_id = ?`,
-		e.Name, e.AmountCents, e.Currency, e.Category, e.UserID, e.Subcategory, e.IsSavings, e.ID, e.HouseholdID)
+		user_id = ?, subcategory = ?, is_savings = ?, account_id = ? WHERE id = ? AND household_id = ?`,
+		e.Name, e.AmountCents, e.Currency, e.Category, e.UserID, e.Subcategory, e.IsSavings, e.AccountID, e.ID, e.HouseholdID)
 	return err
 }
 

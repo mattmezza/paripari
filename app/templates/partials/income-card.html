@@ -43,6 +43,9 @@
   {{end}}
 
   <p class="figure figure--lg tnum" data-tick style="margin-block-start:.75rem">{{money .Calc.NetMonthlyCents .Src.Currency}}<span class="auth__meta" style="display:block;font-size:.75rem;margin-block-start:.125rem">net monthly</span></p>
+  {{if not .Src.Deductions}}
+  <p style="margin-block-start:.25rem;font-size:.75rem;color:var(--color-warning-ink)">No deductions recorded, so this equals gross.</p>
+  {{end}}
 </div>
 {{end}}
 {{template "income-card" .}}

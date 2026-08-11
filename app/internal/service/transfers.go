@@ -3,6 +3,9 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"github.com/mattmezza/paripari/internal/model"
 )
 
 // Transfer is one standing-order row of the transfer table.
@@ -35,34 +38,108 @@ type TransferPlan struct {
 	Confirmed bool
 }
 
-// BuildTransfers produces the consolidated transfer instructions: per partner,
-// one transfer to the common checking account for their share of ordinary
-// common expenses and one to the common savings account for their share of
-// savings-tagged common expenses. Zero-amount rows are omitted.
-//
-// ponytail: expenses carry no account linkage in the schema, so grouping is by
-// savings-vs-not, which is exactly prompt.md's example table. If expenses ever
-// gain an account_id, group by it here.
+// BuildTransfers produces the consolidated transfer instructions: common
+// expenses are split by the household method, and each expense's share is sent
+// to its budget account — or, when it names none, to the common checking
+// account (common savings for savings-tagged ones). Each partner gets one row
+// per destination account; zero-amount rows are omitted.
 func BuildTransfers(in Inputs, ov MonthlyOverview) TransferPlan {
 	checking := commonAccount(in, "checking", "Common checking")
 	savings := commonAccount(in, "savings", "Common savings")
 
+	groups := []*transferGroup{
+		{target: checking, prefix: "Monthly contribution"},
+		{target: savings, prefix: "Savings contribution"},
+	}
+	byKey := map[string]*transferGroup{checking.key(): groups[0], savings.key(): groups[1]}
+	byID := map[int64]model.Account{}
+	for _, a := range in.Accounts {
+		byID[a.ID] = a
+	}
+
+	for _, e := range in.Expenses {
+		if e.Category != "common" {
+			continue
+		}
+		g := groups[0]
+		if e.IsSavings {
+			g = groups[1]
+		}
+		if e.AccountID != nil {
+			if a, ok := byID[*e.AccountID]; ok {
+				t := target{id: a.ID, name: a.Name, iban: a.IBAN}
+				if existing, ok := byKey[t.key()]; ok {
+					g = existing
+				} else {
+					g = &transferGroup{target: t, prefix: "Budget contribution"}
+					byKey[t.key()] = g
+					groups = append(groups, g)
+				}
+			}
+		}
+		g.totalCents += in.amount(e.AmountCents, e.Currency)
+		g.addLabel(e)
+	}
+
+	ratio := ov.Ratio
 	p := TransferPlan{Currency: ov.Currency}
 	for _, c := range []PartnerCashflow{ov.A, ov.B} {
-		add := func(to target, cents int64, ref string) {
+		for _, g := range groups {
+			a, b := ShareOf(g.totalCents, ratio)
+			cents := a
+			if c.UserID == ov.B.UserID {
+				cents = b
+			}
 			if cents == 0 {
-				return
+				continue
 			}
 			p.Rows = append(p.Rows, Transfer{
 				FromUserID: c.UserID, From: c.Name + " personal",
-				To: to.name, ToAccountID: to.id, ToIBAN: to.iban,
-				AmountCents: cents, Currency: ov.Currency, Reference: ref,
+				To: g.target.name, ToAccountID: g.target.id, ToIBAN: g.target.iban,
+				AmountCents: cents, Currency: ov.Currency, Reference: g.reference(),
 			})
 		}
-		add(checking, c.CommonShareCents-c.CommonSavingsShareCents, "Monthly contribution")
-		add(savings, c.CommonSavingsShareCents, "Savings contribution")
 	}
 	return p
+}
+
+// transferGroup is everything feeding one destination account.
+type transferGroup struct {
+	target     target
+	prefix     string
+	totalCents int64
+	labels     []string
+}
+
+// addLabel records what feeds this group — the expense's subcategory when it
+// has one, its name otherwise — deduplicated, in first-seen order.
+func (g *transferGroup) addLabel(e model.Expense) {
+	l := e.Subcategory
+	if l == "" {
+		l = e.Name
+	}
+	if l == "" {
+		return
+	}
+	for _, existing := range g.labels {
+		if existing == l {
+			return
+		}
+	}
+	g.labels = append(g.labels, l)
+}
+
+// reference is the standing-order reference: what the row is, plus what feeds
+// it, e.g. "Monthly contribution · rent, utilities, insurance".
+func (g *transferGroup) reference() string {
+	labels := g.labels
+	if len(labels) > 3 {
+		labels = append(append([]string{}, labels[:3]...), "…")
+	}
+	if len(labels) == 0 {
+		return g.prefix
+	}
+	return g.prefix + " · " + strings.Join(labels, ", ")
 }
 
 type target struct {
@@ -70,6 +147,10 @@ type target struct {
 	name string
 	iban string
 }
+
+// key identifies a destination: by account id, or by name for the fallback
+// targets that have no account row behind them.
+func (t target) key() string { return fmt.Sprintf("%d|%s", t.id, t.name) }
 
 // commonAccount picks the household-level (non-personal) account with the given
 // purpose, falling back to a name-only target when none exists.

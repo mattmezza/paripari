@@ -1,6 +1,10 @@
 package service
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/mattmezza/paripari/internal/model"
+)
 
 func planOf(in Inputs) TransferPlan { return BuildTransfers(in, BuildOverview(in)) }
 
@@ -45,6 +49,101 @@ func TestBuildTransfersFallbackAccountsAndZeroRows(t *testing.T) {
 	}
 	if p.Rows[0].To != "Common checking" || p.Rows[0].ToAccountID != 0 {
 		t.Errorf("fallback target = %+v", p.Rows[0])
+	}
+}
+
+// TestBuildTransfersBudgetAccount is the prompt's own example: a CHF 1'000
+// groceries budget routed to its own envelope account, everything else on the
+// household defaults.
+func TestBuildTransfersBudgetAccount(t *testing.T) {
+	in := baseInputs()
+	budget := int64(32)
+	in.Accounts = append(in.Accounts, model.Account{ID: budget, Name: "Groceries budget", Currency: "CHF", Purpose: "envelope"})
+	groceries := model.Expense{ID: 24, HouseholdID: 1, Name: "Groceries", AmountCents: 100000,
+		Currency: "CHF", Category: "common", Subcategory: "groceries", AccountID: &budget}
+	in.Expenses = append(in.Expenses, groceries)
+
+	p := planOf(in)
+	var toBudget, total int64
+	for _, r := range p.Rows {
+		total += r.AmountCents
+		if r.ToAccountID == budget {
+			toBudget += r.AmountCents
+			if r.Reference != "Budget contribution · groceries" {
+				t.Errorf("budget row reference = %q", r.Reference)
+			}
+		}
+	}
+	if len(p.Rows) != 6 {
+		t.Fatalf("rows = %d, want 6 (2 partners × 3 accounts): %+v", len(p.Rows), p.Rows)
+	}
+	if toBudget != 100000 {
+		t.Errorf("groceries budget rows sum to %d, want 100000", toBudget)
+	}
+	if total != 500000 {
+		t.Errorf("all rows sum to %d, want 500000", total)
+	}
+
+	// A NULL account still lands on the default checking account.
+	for _, r := range p.Rows {
+		if r.To == "Common checking" && r.ToAccountID != 30 {
+			t.Errorf("default row lost its account: %+v", r)
+		}
+	}
+}
+
+// TestBuildTransfersRoundingInvariant: whatever the ratio, each destination
+// account receives exactly the sum of the expenses feeding it.
+func TestBuildTransfersRoundingInvariant(t *testing.T) {
+	budget := int64(32)
+	for _, amount := range []int64{100001, 33333, 1, 999999} {
+		in := baseInputs()
+		in.Accounts = append(in.Accounts, model.Account{ID: budget, Name: "Groceries budget", Currency: "CHF", Purpose: "envelope"})
+		in.Expenses = append(in.Expenses, model.Expense{ID: 24, Name: "Groceries", AmountCents: amount,
+			Currency: "CHF", Category: "common", AccountID: &budget})
+		var got int64
+		for _, r := range planOf(in).Rows {
+			if r.ToAccountID == budget {
+				got += r.AmountCents
+			}
+		}
+		if got != amount {
+			t.Errorf("amount %d: budget rows sum to %d", amount, got)
+		}
+	}
+}
+
+// An account_id pointing at the household's common checking account merges into
+// the default row instead of producing a duplicate destination.
+func TestBuildTransfersExplicitDefaultAccountMerges(t *testing.T) {
+	in := baseInputs()
+	checking := int64(30)
+	in.Expenses = append(in.Expenses, model.Expense{ID: 24, Name: "Utilities", AmountCents: 20000,
+		Currency: "CHF", Category: "common", AccountID: &checking})
+	p := planOf(in)
+	if len(p.Rows) != 4 {
+		t.Fatalf("rows = %d, want 4: %+v", len(p.Rows), p.Rows)
+	}
+	var toChecking int64
+	for _, r := range p.Rows {
+		if r.ToAccountID == checking {
+			toChecking += r.AmountCents
+		}
+	}
+	if toChecking != 320000 {
+		t.Errorf("checking rows sum to %d, want 320000", toChecking)
+	}
+}
+
+// A dangling account_id (account deleted under it) falls back to the default.
+func TestBuildTransfersUnknownAccountFallsBack(t *testing.T) {
+	in := baseInputs()
+	ghost := int64(999)
+	in.Expenses = append(in.Expenses, model.Expense{ID: 24, Name: "Ghost", AmountCents: 10000,
+		Currency: "CHF", Category: "common", AccountID: &ghost})
+	p := planOf(in)
+	if len(p.Rows) != 4 {
+		t.Fatalf("rows = %d, want 4: %+v", len(p.Rows), p.Rows)
 	}
 }
 
