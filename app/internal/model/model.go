@@ -223,9 +223,40 @@ type TripPlan struct {
 	StartDate    *string
 	MonthsToSave int
 	Committed    bool
-	CreatedAt    string
-	Items        []TripItem
+	// FundingAccountID is the account the trip money sits in, usually a budget
+	// envelope. nil means the household default (common checking).
+	FundingAccountID *int64
+	// FundingStrategy is TripSpread or TripOneShot; "" reads as TripSpread.
+	FundingStrategy string
+	// LinkedExpenseID is the recurring expense a commit created, so uncommitting
+	// can remove exactly that row. nil for a draft, or for a committed one-shot
+	// trip, which creates no expense at all.
+	LinkedExpenseID *int64
+	CreatedAt       string
+	Items           []TripItem
 }
+
+// Trip funding strategies. An empty strategy reads as TripSpread: rows written
+// before the choice existed put money aside every month, and so does the zero
+// value.
+const (
+	TripSpread  = "spread"
+	TripOneShot = "one_shot"
+)
+
+// TripStrategies is the funding picker's option list, in display order.
+var TripStrategies = []struct{ Value, Label string }{
+	{TripSpread, "Save up monthly"},
+	{TripOneShot, "Pay in one go"},
+}
+
+// IsOneShot reports whether the trip is paid out of what the account already
+// holds rather than funded month by month.
+func (t TripPlan) IsOneShot() bool { return t.FundingStrategy == TripOneShot }
+
+// ValidTripStrategy reports whether s is one of the two funding strategies.
+// The empty string is not valid on the way in — handlers default it explicitly.
+func ValidTripStrategy(s string) bool { return s == TripSpread || s == TripOneShot }
 
 type TripItem struct {
 	ID          int64

@@ -28,6 +28,8 @@ func projectionForm(name, rate, horizon string) url.Values {
 	return url.Values{
 		"name": {name}, "rate": {rate}, "horizon": {horizon},
 		"inflation": {"0.02"}, "oneoff_at": {"12"}, "oneoff_amount": {"1000"},
+		"growth_a": {"0.03"}, "growth_b": {"0.02"},
+		"promo_at": {"24"}, "promo_pct": {"0.0800"}, "promo_who": {"a"},
 	}
 }
 
@@ -41,7 +43,7 @@ func TestSavedProjectionsCRUD(t *testing.T) {
 		t.Fatalf("POST /projections/saved: %d: %s", w.Code, w.Body.String())
 	}
 	if body := w.Body.String(); !strings.Contains(body, "Cautious") ||
-		!strings.Contains(body, "3.0% · 5 years · 2.0% inflation · 1 one-off") {
+		!strings.Contains(body, "3.0% · 5 years · 2.0% inflation · 1 one-off · 3.0% income growth · 1 raise") {
 		t.Errorf("saved row does not summarise its assumptions: %s", body)
 	}
 
@@ -70,11 +72,19 @@ func TestSavedProjectionsCRUD(t *testing.T) {
 		`>3.0%</span>`, // return-rate readout
 		`value="5" style="accent-color:var(--color-accent);margin-inline-end:.375rem" checked`, // 5y horizon
 		`>2.0%</span>`, // inflation readout
-		`{"At":12,"Cents":100000,"AmountStr":"1000.00"}`, // the one-off row
+		`{"At":12,"Cents":100000,"AmountStr":"1000.00"}`,                 // the one-off row
+		`id="growth-a" min="-0.10" max="0.10" step="0.001" value="0.03"`, // income growth slider
+		`{"At":24,"Pct":0.08,"Percent":8,"Who":"a"}`,                     // the promotion row
 	} {
 		if !strings.Contains(loaded, want) {
 			t.Errorf("loaded projection is missing %q", want)
 		}
+	}
+
+	// A solo household has no partner B, so a raise aimed at one is dropped
+	// rather than quietly landing on partner A.
+	if solo := get(t, h, loadURL+"&promo_at=6&promo_pct=0.1&promo_who=b", c); strings.Contains(solo, `"Who":"b"`) {
+		t.Error("promotion for a partner the household does not have was kept")
 	}
 
 	// --- update: renames and restates the assumptions in one go ---

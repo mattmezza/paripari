@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mattmezza/paripari/internal/auth"
+	"github.com/mattmezza/paripari/internal/model"
 	"github.com/mattmezza/paripari/internal/store"
 )
 
@@ -314,6 +315,11 @@ func ValidateBackup(b *store.Backup) error {
 		}
 		if t.MonthsToSave < 1 {
 			return fmt.Errorf("%s saves over %d months", where, t.MonthsToSave)
+		}
+		// "" is how a file written before funding strategies existed reads, and
+		// the importer defaults it to spread.
+		if t.FundingStrategy != "" && !model.ValidTripStrategy(t.FundingStrategy) {
+			return fmt.Errorf("%s has funding strategy %q", where, t.FundingStrategy)
 		}
 		for j, it := range t.Items {
 			iw := fmt.Sprintf("%s, item #%d (%q)", where, j+1, it.Name)

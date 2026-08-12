@@ -25,6 +25,19 @@
         <label class="label" for="new-trip-date">Start date</label>
         <input class="input" id="new-trip-date" name="start_date" type="date">
       </div>
+      <div class="field" style="margin:0;flex:1;min-width:10rem">
+        <label class="label" for="new-trip-strategy">Funding</label>
+        <select class="select" id="new-trip-strategy" name="funding_strategy">
+          {{range $d.Strategies}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
+        </select>
+      </div>
+      <div class="field" style="margin:0;flex:1;min-width:11rem">
+        <label class="label" for="new-trip-account">Paid from</label>
+        <select class="select" id="new-trip-account" name="funding_account_id">
+          <option value="">Household default</option>
+          {{range $d.AccountGroups}}<optgroup label="{{.Label}}">{{range .Accounts}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</optgroup>{{end}}
+        </select>
+      </div>
       <button class="btn btn--primary" type="submit">Create</button>
       <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
     </form>
@@ -37,7 +50,7 @@
     <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
       <div>
         <h3 class="card__title" style="margin:0">{{.Name}}</h3>
-        <p class="auth__meta" style="margin:.25rem 0 0">{{if .StartDateText}}{{.StartDateText}} · {{end}}{{.TotalText}}</p>
+        <p class="auth__meta" style="margin:.25rem 0 0">{{if .StartDateText}}{{.StartDateText}} · {{end}}{{.TotalText}} · {{.FundingText}}</p>
       </div>
       <span class="pill {{if eq .Status "committed"}}pill--positive{{end}}">{{.Status}}</span>
     </div>

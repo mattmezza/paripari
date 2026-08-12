@@ -179,7 +179,19 @@ func seedBackupData(t *testing.T, st *store.Store, hhID, userID int64) {
 		t.Fatal(err)
 	}
 
-	tripID, err := st.CreateTrip(&model.TripPlan{HouseholdID: hhID, Name: "Japan", MonthsToSave: 8})
+	// A committed trip carries two foreign keys the file must not lose: the
+	// account it is funded from, and the expense committing it created.
+	tripExpID, err := st.CreateExpense(&model.Expense{
+		HouseholdID: hhID, Name: "Trip: Japan", AmountCents: 22_500, Currency: "CHF",
+		Category: "common", Subcategory: "holidays", AccountID: &envelope,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tripID, err := st.CreateTrip(&model.TripPlan{
+		HouseholdID: hhID, Name: "Japan", MonthsToSave: 8, Committed: true,
+		FundingAccountID: &envelope, FundingStrategy: model.TripSpread, LinkedExpenseID: &tripExpID,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +226,7 @@ func TestBackupRoundTrip(t *testing.T) {
 	seedBackupData(t, st, hh, u.ID)
 
 	before := snapshot(t, st, hh)
-	want := tally{Incomes: 1, Deductions: 2, Expenses: 2, Accounts: 3, CC: 1, Assets: 1, Gold: 1,
+	want := tally{Incomes: 1, Deductions: 2, Expenses: 3, Accounts: 3, CC: 1, Assets: 1, Gold: 1,
 		Goals: 1, Scenarios: 1, Changes: 1, Trips: 1, Items: 1, NetWorth: 1, Financial: 1,
 		SavedProjections: 1}
 	if got := count(before); got != want {
@@ -258,6 +270,28 @@ func TestBackupRoundTrip(t *testing.T) {
 	if accName != "Groceries envelope" {
 		t.Errorf("groceries points at account %q, want %q", accName, "Groceries envelope")
 	}
+	// The trip keeps its funding choice, and both of its foreign keys land on
+	// the rows this import wrote — not on the exporting household's ids.
+	if len(after.TripPlans) != 1 {
+		t.Fatalf("trips = %+v", after.TripPlans)
+	}
+	tp := after.TripPlans[0]
+	if tp.FundingStrategy != model.TripSpread || tp.MonthsToSave != 8 {
+		t.Errorf("trip funding = %+v", tp)
+	}
+	if tp.FundingAccountID == nil || *tp.FundingAccountID != *groceries.AccountID {
+		t.Errorf("trip funding account = %v, want the imported envelope %d", tp.FundingAccountID, *groceries.AccountID)
+	}
+	var linked string
+	for _, e := range after.Expenses {
+		if tp.LinkedExpenseID != nil && e.ID == *tp.LinkedExpenseID {
+			linked = e.Name
+		}
+	}
+	if linked != "Trip: Japan" {
+		t.Errorf("trip's linked expense = %q, want %q", linked, "Trip: Japan")
+	}
+
 	// The income source keeps its deductions.
 	if len(after.IncomeSources) != 1 {
 		t.Fatalf("income sources = %d", len(after.IncomeSources))
@@ -476,5 +510,34 @@ func TestBackupImportRejections(t *testing.T) {
 
 	if after := snapshot(t, st, hh); !reflect.DeepEqual(after, before) {
 		t.Errorf("a refused import changed the data")
+	}
+}
+
+// A funding strategy the app does not know would hit the trip_plans CHECK
+// mid-import, after the household's rows are already gone. The validator has to
+// catch it in the file first.
+func TestBackupRejectsUnknownTripStrategy(t *testing.T) {
+	h, st := newServerStore(t)
+	c, hh := signup(t, h, st, "a@example.com")
+	u, _ := st.UserByEmail("a@example.com")
+	seedBackupData(t, st, hh, u.ID)
+	before := snapshot(t, st, hh)
+
+	var doc map[string]any
+	if err := json.Unmarshal(exportBytes(t, h, c), &doc); err != nil {
+		t.Fatal(err)
+	}
+	doc["TripPlans"].([]any)[0].(map[string]any)["FundingStrategy"] = "credit card roulette"
+	broken, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := upload(t, h, broken, true, c)
+	if w.Code == http.StatusOK || !bytes.Contains(w.Body.Bytes(), []byte("roulette")) {
+		t.Fatalf("import with a bogus funding strategy: %d: %s", w.Code, w.Body.String())
+	}
+	if after := snapshot(t, st, hh); !reflect.DeepEqual(after, before) {
+		t.Error("rejected import changed the data")
 	}
 }

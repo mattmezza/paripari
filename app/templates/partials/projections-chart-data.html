@@ -43,7 +43,15 @@
     <div>
       <dt class="label" style="margin:0">Monthly contribution · <span class="tnum">{{money .SurplusCents .Currency}}</span></dt>
       <dd style="margin:.125rem 0 0;color:var(--color-muted)">
-        Your monthly surplus: income minus every non-savings expense — deliberate savings plus whatever is left over. Added at the end of each month.
+        Your monthly surplus: income minus every non-savings expense — deliberate savings plus whatever is left over. Added at the end of each month, and it grows with the raises below.
+      </dd>
+    </div>
+    <div>
+      <dt class="label" style="margin:0">Raises · <span class="tnum">{{pct .GrowthA}} a year</span>{{if .PartnerBName}} for {{.PartnerAName}}, <span class="tnum">{{pct .GrowthB}}</span> for {{.PartnerBName}}{{end}}</dt>
+      <dd style="margin:.125rem 0 0;color:var(--color-muted)">
+        Pay is assumed to move by that much every year.{{if .Promos}} On top of that{{range .Promos}}, {{pct .Pct}} for {{if eq .Who "a"}}{{$.PartnerAName}}{{else}}{{$.PartnerBName}}{{end}} in {{.At}} months{{end}} — each one a step up that stays.{{end}}
+        Your expenses are assumed to keep pace with prices rather than with your pay, so all of a raise lands on the monthly surplus.
+        {{if gt .Inflation 0.0}}These are raises on the payslip, and inflation is taken off them like it is off everything else here: at {{pct .Inflation}} inflation, a {{pct .Inflation}} raise leaves you exactly where you started.{{end}}
       </dd>
     </div>
     <div>
@@ -63,14 +71,14 @@
     <div>
       <dt class="label" style="margin:0">Horizon · <span class="tnum">{{.HorizonYears}} years</span></dt>
       <dd style="margin:.125rem 0 0;color:var(--color-muted)">
-        Compounded month by month to year {{.HorizonYears}}. No taxes or raises are modelled.{{if .Goals}} Dashed lines on the chart mark each goal's target amount.{{end}}
+        Compounded month by month to year {{.HorizonYears}}. No taxes are modelled.{{if .Goals}} Dashed lines on the chart mark each goal's target amount.{{end}}
       </dd>
     </div>
     {{if gt .Inflation 0.0}}
     <div>
       <dt class="label" style="margin:0">Inflation · <span class="tnum">{{pct .Inflation}} a year</span></dt>
       <dd style="margin:.125rem 0 0;color:var(--color-muted)">
-        Every figure is in today's money: the pot compounds at the real rate ({{pct .Rate}} minus inflation) and your monthly contribution is assumed to keep pace with prices.
+        Every figure is in today's money: the pot compounds at the real rate ({{pct .Rate}} minus inflation) and your monthly contribution is assumed to keep pace with prices. Inflation is taken off every rate on this page, raises included, so only the part of a raise above {{pct .Inflation}} makes you better off.
       </dd>
     </div>
     {{end}}

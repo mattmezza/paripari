@@ -167,6 +167,53 @@ func TestChildRecordsAreTenantScoped(t *testing.T) {
 	}
 }
 
+// A trip's funding account is a foreign key into accounts, so it is the same
+// hole an expense's account_id would be: pointing one at a stranger's account
+// would name that account all over this household's screens.
+func TestTripFundingAccountIsTenantScoped(t *testing.T) {
+	h, st := newServerStore(t)
+	cookieA, hhA := signup(t, h, st, "trip-a@example.com")
+	_, hhB := signup(t, h, st, "trip-b@example.com")
+	accB := tripEnvelope(t, st, hhB, 1_000_000)
+
+	// --- attack: A creates a trip funded from B's envelope ---
+	if w := do(t, h, http.MethodPost, "/trips", url.Values{
+		"name": {"Heist"}, "funding_strategy": {model.TripOneShot}, "funding_account_id": {itoa(accB)},
+	}, cookieA); w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("POST /trips with foreign account: got %d, want 422: %s", w.Code, w.Body.String())
+	}
+	if trips, _ := st.Trips(hhA); len(trips) != 0 {
+		t.Fatalf("rejected trip was stored anyway: %+v", trips)
+	}
+
+	// --- attack: A points its own trip at B's envelope ---
+	tripA, err := st.CreateTrip(&model.TripPlan{HouseholdID: hhA, Name: "Japan", MonthsToSave: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w := do(t, h, http.MethodPost, "/trips/"+itoa(tripA), url.Values{
+		"name": {"Japan"}, "months_to_save": {"4"},
+		"funding_strategy": {model.TripSpread}, "funding_account_id": {itoa(accB)},
+	}, cookieA); w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("POST foreign funding account: got %d, want 422: %s", w.Code, w.Body.String())
+	}
+	if tp, _ := st.Trip(hhA, tripA); tp.FundingAccountID != nil {
+		t.Errorf("A's trip points at a foreign account: %v", *tp.FundingAccountID)
+	}
+
+	// --- A's own account is accepted on the same route ---
+	accA := tripEnvelope(t, st, hhA, 500_000)
+	if w := do(t, h, http.MethodPost, "/trips/"+itoa(tripA), url.Values{
+		"name": {"Japan"}, "months_to_save": {"4"},
+		"funding_strategy": {model.TripSpread}, "funding_account_id": {itoa(accA)},
+	}, cookieA); w.Code != http.StatusOK {
+		t.Fatalf("POST own funding account: got %d: %s", w.Code, w.Body.String())
+	}
+	if tp, _ := st.Trip(hhA, tripA); tp.FundingAccountID == nil || *tp.FundingAccountID != accA {
+		t.Errorf("own account did not stick: %+v", tp)
+	}
+}
+
 // Card transactions are scoped through the account that owns them. They had no
 // handler reaching them with a raw id, so this was never exploitable — the test
 // exists so the next route added cannot make it so.

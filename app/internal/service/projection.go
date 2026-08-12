@@ -92,14 +92,42 @@ type ProjectionSpec struct {
 	// contribution is assumed to keep pace with inflation.
 	AnnualInflation float64
 	Events          map[int]int64 // month index → amount spent that month
-	Months          int
+	// Incomes is one entry per partner. Their pay is already counted inside
+	// MonthlyCents; what these add is the *movement* on top of it.
+	Incomes []IncomeStream
+	Months  int
 }
 
-// Projection is a curve plus the two figures the summary strip needs.
+// Promotion is a timed step change to one partner's pay: from AtMonth on, their
+// income is Pct higher (0.08 = +8%), on top of the ordinary growth.
+type Promotion struct {
+	AtMonth int
+	Pct     float64
+}
+
+// IncomeStream is one partner's net monthly income and how it is assumed to
+// move: a steady annual growth plus any promotions.
+//
+// AnnualGrowth is nominal, like every other rate here, so inflation discounts
+// it: a 2% raise against 2% inflation leaves the contribution flat in today's
+// money, which is what the projection was already assuming before this knob
+// existed.
+//
+// ponytail: only the raise is modelled, not what it does to the rest of the
+// household — expenses are assumed to keep pace with prices, so a raise lands
+// on the surplus in full. Ceiling: no tax progression, no lifestyle creep.
+type IncomeStream struct {
+	MonthlyNetCents int64
+	AnnualGrowth    float64
+	Promotions      []Promotion
+}
+
+// Projection is a curve plus the figures the summary strip needs.
 type Projection struct {
-	Points      []Point
-	GrowthCents int64 // return credited over the horizon
-	SpentCents  int64 // total of Events actually applied
+	Points           []Point
+	GrowthCents      int64 // return credited over the horizon
+	SpentCents       int64 // total of Events actually applied
+	ContributedCents int64 // contributions paid in, raises included
 }
 
 // Project runs the three-bucket (invested + gold + cash) simulation. Spending
@@ -121,12 +149,32 @@ func Project(s ProjectionSpec) Projection {
 	goldRate := (1+s.GoldAnnualReturn/12)/(1+i) - 1
 	cashRate := 1/(1+i) - 1
 
+	// One running multiplier per income stream, in today's money like the rest
+	// of the curve.
+	pay := make([]float64, len(s.Incomes))
+	for i := range pay {
+		pay[i] = 1
+	}
+
 	p := Projection{Points: make([]Point, 0, months+1)}
 	p.Points = append(p.Points, Point{0, s.StartCents})
+	var contributed float64
 	for m := 1; m <= months; m++ {
+		monthly := float64(s.MonthlyCents)
+		for k, inc := range s.Incomes {
+			pay[k] *= (1 + inc.AnnualGrowth/12) / (1 + i)
+			for _, pr := range inc.Promotions {
+				if pr.AtMonth == m {
+					pay[k] *= 1 + pr.Pct
+				}
+			}
+			monthly += float64(inc.MonthlyNetCents) * (pay[k] - 1)
+		}
+		contributed += monthly
+
 		gain := invested*r + gold*goldRate + cash*cashRate
 		p.GrowthCents += int64(gain + 0.5*sign(gain))
-		invested += invested*r + float64(s.MonthlyCents)
+		invested += invested*r + monthly
 		gold += gold * goldRate
 		cash += cash * cashRate
 		if out := s.Events[m]; out != 0 {
@@ -147,6 +195,7 @@ func Project(s ProjectionSpec) Projection {
 		total := cash + gold + invested
 		p.Points = append(p.Points, Point{m, int64(total + 0.5*sign(total))})
 	}
+	p.ContributedCents = int64(contributed + 0.5*sign(contributed))
 	return p
 }
 

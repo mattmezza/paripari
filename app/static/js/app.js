@@ -2,6 +2,18 @@
 (function () {
   "use strict";
 
+  /* ── htmx settle vs Alpine ──────────────────────────────────────────────
+     htmx "settles" class/style/width/height on any swapped-in element whose id
+     matches one already on the page: the new element first wears the OLD
+     element's values, then htmx restores the server-rendered ones a beat later.
+     Alpine's x-show writes `display:none` as an inline style, so that restore
+     wipes it — and x-show only re-runs when its expression changes, so the
+     element stays visible. That is why a boosted navigation to a saved
+     projection arrived with the edit-name field (and the save form) hanging
+     open. Nothing here animates between old and new attribute values, so the
+     whole settle step is dead weight: turn it off. */
+  if (window.htmx) window.htmx.config.attributesToSettle = [];
+
   /* ── Theme toggle ───────────────────────────────────────────────────────
      The blocking inline script in <head> already stamped `.dark`. This only
      handles the user flipping it. */

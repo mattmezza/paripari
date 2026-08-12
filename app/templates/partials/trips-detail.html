@@ -4,7 +4,7 @@
   Dot is *handler.tripDetailView.
 */}}
 {{define "trips-detail"}}
-<div class="card" style="margin-block-end:1rem" x-data="{ open: false }">
+<div class="card" style="margin-block-end:1rem" x-data="{ open: false, strategy: '{{.Trip.FundingStrategy}}' }">
   <div class="card__head">
     <h3 class="card__title" style="margin:0">{{.Trip.Name}}</h3>
     <div style="display:flex;gap:.5rem;align-items:center">
@@ -28,13 +28,55 @@
       <label class="label" for="trip-date">Start date</label>
       <input class="input" id="trip-date" name="start_date" type="date" value="{{.StartDateValue}}">
     </div>
-    <div class="field" style="margin:0;min-width:8rem">
+    <div class="field" style="margin:0;min-width:10rem">
+      <label class="label" for="trip-strategy">Funding</label>
+      <select class="select" id="trip-strategy" name="funding_strategy" x-model="strategy">
+        {{range .Strategies}}<option value="{{.Value}}" {{if eq .Value $.Trip.FundingStrategy}}selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+    <div class="field" style="margin:0;min-width:8rem" x-show="strategy === 'spread'">
       <label class="label" for="trip-months">Fund over (months)</label>
       <input class="input" id="trip-months" name="months_to_save" type="number" min="1" value="{{.Trip.MonthsToSave}}">
+    </div>
+    <div class="field" style="margin:0;min-width:11rem">
+      <label class="label" for="trip-account">Paid from</label>
+      <select class="select" id="trip-account" name="funding_account_id">
+        <option value="">Household default (common checking)</option>
+        {{range .AccountGroups}}<optgroup label="{{.Label}}">{{range .Accounts}}<option value="{{.ID}}" {{if eq .ID $.FundingAccountID}}selected{{end}}>{{.Name}}</option>{{end}}</optgroup>{{end}}
+      </select>
+      <p class="helper">Usually a holiday envelope — that is where trip money normally lives.</p>
     </div>
     <button class="btn btn--sm" type="submit">Save</button>
     <button type="button" class="btn btn--sm btn--ghost" @click="open = false">Cancel</button>
   </form>
+</div>
+
+{{/* The consequence of the funding choice, in plain language: the two
+     strategies hit the household's money in genuinely different ways. */}}
+<div class="card" style="margin-block-end:1rem">
+  <div class="card__head">
+    <h3 class="card__title">Funding</h3>
+    <span class="pill">{{if .Totals.OneShot}}one go{{else}}monthly{{end}}</span>
+  </div>
+  {{if .Totals.OneShot}}
+  <p class="auth__meta" style="margin:0">
+    This trip is paid in one go out of <strong>{{.AccountName}}</strong>, which holds {{.BalanceText}} today.
+    Nothing is added to your monthly expenses — your surplus, your transfers and your goal dates stay exactly
+    as they are. The money is not free: it leaves that account, so the net worth line below starts
+    {{.TotalText}} lower and never catches up.
+  </p>
+  {{if .ShortfallText}}
+  <p style="margin:.75rem 0 0"><span class="pill pill--danger">{{.ShortfallText}} short</span></p>
+  <p class="auth__meta" style="margin:.375rem 0 0">{{.AccountName}} does not cover this trip. Either save the gap first, pick another account, or switch to funding it monthly.</p>
+  {{end}}
+  {{else}}
+  <p class="auth__meta" style="margin:0">
+    Committing adds <strong>{{.MonthlyText}}/mo</strong> to your common expenses for {{.Trip.MonthsToSave}}
+    month{{if ne .Trip.MonthsToSave 1}}s{{end}}, accumulated in <strong>{{.AccountName}}</strong>. Trip money is
+    spent, not saved, so it lowers your available cash by that much and pushes your goals out — that is what the
+    impact panel below prices.
+  </p>
+  {{end}}
 </div>
 
 {{if .Trip.Committed}}
@@ -120,7 +162,11 @@
       <tfoot><tr><td><strong>Total</strong></td><td class="num"><strong data-tick>{{.TotalText}}</strong></td></tr></tfoot>
     </table>
   </div>
+  {{if .Totals.OneShot}}
+  <p class="auth__meta" style="margin:.75rem 0 0">Paid in one go from {{.AccountName}}: <strong data-tick>{{.TotalText}}</strong></p>
+  {{else}}
   <p class="auth__meta" style="margin:.75rem 0 0">Fund over {{.Trip.MonthsToSave}} month{{if ne .Trip.MonthsToSave 1}}s{{end}}: <strong data-tick>{{.MonthlyText}}</strong>/mo</p>
+  {{end}}
 </div>
 {{end}}
 

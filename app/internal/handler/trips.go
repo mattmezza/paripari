@@ -11,16 +11,18 @@ import (
 	"github.com/mattmezza/paripari/internal/view"
 )
 
-// tripLinkedSubcategory is how a committed trip's funding expense is tied back
-// to the trip: the expense's subcategory encodes the trip id, so uncommitting
-// can find and delete it without a schema change (trip_plans has no
-// linked_expense_id column).
-// ponytail: a real FK column would be cleaner; this piggybacks on the existing
-// subcategory text field to avoid touching migrations owned by another agent.
-func tripLinkedSubcategory(tripID int64) string { return fmt.Sprintf("trip:%d", tripID) }
+// tripSubcategory files every committed trip's funding expense under one
+// heading, so /expenses and the expense analysis show a single "holidays" group
+// instead of one group per trip. The trip remembers its expense by id
+// (trip_plans.linked_expense_id), which is what uncommit deletes.
+const tripSubcategory = "holidays"
 
 // tripCategories are the itemized cost buckets from prompt.md's trip planner.
 var tripCategories = []string{"flights", "accommodation", "activities", "meals", "transport", "other"}
+
+// tripPurposeOrder is the funding picker's group order: envelopes first,
+// because a holiday envelope is the usual home for trip money.
+var tripPurposeOrder = []string{"envelope", "savings", "checking", "investment", "cc_buffer", "pension"}
 
 // registerTrips mounts the holiday/trip budgeting section: itemized plans,
 // funding math, goal-impact comparison, and commit-to-expense.
@@ -55,6 +57,13 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 		t := &model.TripPlan{HouseholdID: in.Household.ID, Name: name, MonthsToSave: 1}
 		if sd := r.PostFormValue("start_date"); sd != "" {
 			t.StartDate = &sd
+		}
+		if err := parseTripFunding(r, in.Accounts, t); err != nil {
+			// ponytail: the picker only ever offers this household's accounts,
+			// so a rejection here is a forged request, not a user mistake — it
+			// gets a plain 422 instead of a re-rendered form.
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
 		}
 		id, err := d.Store.CreateTrip(t)
 		if err != nil {
@@ -95,6 +104,13 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 			months = 1
 		}
 		t.MonthsToSave = months
+		if err := parseTripFunding(r, in.Accounts, t); err != nil {
+			data := tripDetailData(in, *t)
+			data.FormError = err.Error()
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			d.View.Partial(w, "partials/trips-detail", data)
+			return
+		}
 		if err := d.Store.UpdateTrip(t); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -114,9 +130,7 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		if t.Committed {
-			removeLinkedExpense(d, in, t.ID)
-		}
+		removeLinkedExpense(d, in, t)
 		if err := d.Store.DeleteTrip(in.Household.ID, t.ID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -209,21 +223,32 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 			return
 		}
 		tt := service.TripTotal(*t, in.Rates, in.Display)
-		e := model.Expense{
-			HouseholdID: in.Household.ID, Name: "Trip: " + t.Name,
-			AmountCents: tt.MonthlyCents, Currency: tt.Currency,
-			Category: "common", Subcategory: tripLinkedSubcategory(t.ID), Kind: model.KindExpense,
-		}
-		if _, err := d.Store.CreateExpense(&e); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		flash := "Trip committed. Nothing recurring was added: " + service.Money(tt.TotalCents, tt.Currency) +
+			" comes out of " + fundingAccountName(in, tt) + " when you pay."
+		if !tt.OneShot {
+			// Spread funding is a real monthly obligation, so it becomes a
+			// common expense — named after the funding account, so the money
+			// shows up against the right budget holder on /expenses.
+			e := model.Expense{
+				HouseholdID: in.Household.ID, Name: "Trip: " + t.Name,
+				AmountCents: tt.MonthlyCents, Currency: tt.Currency,
+				Category: "common", Subcategory: tripSubcategory, Kind: model.KindExpense,
+				AccountID: t.FundingAccountID,
+			}
+			id, err := d.Store.CreateExpense(&e)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			t.LinkedExpenseID = &id
+			flash = "Trip committed. " + service.Money(tt.MonthlyCents, tt.Currency) + "/mo added to common expenses."
 		}
 		t.Committed = true
 		if err := d.Store.UpdateTrip(t); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		view.SetFlash(w, "Trip committed. "+service.Money(tt.MonthlyCents, tt.Currency)+"/mo added to common expenses.")
+		view.SetFlash(w, flash)
 		t2, _ := d.Store.Trip(in.Household.ID, t.ID)
 		in2, _ := BuildInputs(d, r)
 		w.Header().Set("HX-Trigger", "pp:recalc")
@@ -236,8 +261,9 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		removeLinkedExpense(d, in, t.ID)
+		removeLinkedExpense(d, in, t)
 		t.Committed = false
+		t.LinkedExpenseID = nil
 		if err := d.Store.UpdateTrip(t); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -267,14 +293,65 @@ func loadTrip(d *Deps, r *http.Request) (service.Inputs, *model.TripPlan, error)
 }
 
 // removeLinkedExpense deletes the common expense a commit created for this
-// trip, if any (see tripLinkedSubcategory).
-func removeLinkedExpense(d *Deps, in service.Inputs, tripID int64) {
-	want := tripLinkedSubcategory(tripID)
-	for _, e := range in.Expenses {
-		if e.Subcategory == want {
-			d.Store.DeleteExpense(in.Household.ID, e.ID)
+// trip, if any (see tripSubcategory). A one-shot trip has none.
+func removeLinkedExpense(d *Deps, in service.Inputs, t *model.TripPlan) {
+	if t.LinkedExpenseID != nil {
+		d.Store.DeleteExpense(in.Household.ID, *t.LinkedExpenseID)
+	}
+}
+
+// parseTripFunding reads the funding choice off a form onto t. The account is
+// validated exactly as parseExpenseForm validates an expense's: an id that is
+// not one of this household's accounts is rejected, never stored.
+func parseTripFunding(r *http.Request, accounts []model.Account, t *model.TripPlan) error {
+	t.FundingStrategy = model.TripSpread
+	if s := r.PostFormValue("funding_strategy"); s != "" {
+		if !model.ValidTripStrategy(s) {
+			return fmt.Errorf("choose a funding strategy")
+		}
+		t.FundingStrategy = s
+	}
+	t.FundingAccountID = nil
+	v := r.PostFormValue("funding_account_id")
+	if v == "" {
+		return nil
+	}
+	id, _ := strconv.ParseInt(v, 10, 64)
+	for i := range accounts {
+		if accounts[i].ID == id {
+			t.FundingAccountID = &accounts[i].ID
+			return nil
 		}
 	}
+	return fmt.Errorf("that account doesn't belong to this household")
+}
+
+// fundingAccountName names the account a trip draws on, for prose.
+func fundingAccountName(in service.Inputs, tt service.TripTotals) string {
+	if a := service.FundingOf(in, tt).Account; a != nil {
+		return a.Name
+	}
+	return "the household default"
+}
+
+// acctPickerGroup is one <optgroup> of the funding account picker.
+type acctPickerGroup struct {
+	Label    string
+	Accounts []model.Account
+}
+
+func tripAccountGroups(accounts []model.Account) []acctPickerGroup {
+	byPurpose := map[string][]model.Account{}
+	for _, a := range accounts {
+		byPurpose[a.Purpose] = append(byPurpose[a.Purpose], a)
+	}
+	var out []acctPickerGroup
+	for _, p := range tripPurposeOrder {
+		if rows := byPurpose[p]; len(rows) > 0 {
+			out = append(out, acctPickerGroup{Label: service.PurposeLabel(p), Accounts: rows})
+		}
+	}
+	return out
 }
 
 func parseTripItemForm(r *http.Request, tripID int64, defaultCurrency string) (model.TripItem, error) {
@@ -301,11 +378,14 @@ type tripCard struct {
 	TotalText     string
 	Status        string // draft | committed
 	StartDateText string
+	FundingText   string // "over 6 months" | "in one go from Holiday envelope"
 }
 
 type tripListView struct {
-	Trips    []tripCard
-	Currency string
+	Trips         []tripCard
+	Currency      string
+	Strategies    []struct{ Value, Label string }
+	AccountGroups []acctPickerGroup
 }
 
 func tripListData(trips []model.TripPlan, in service.Inputs) tripListView {
@@ -320,9 +400,15 @@ func tripListData(trips []model.TripPlan, in service.Inputs) tripListView {
 		if t.StartDate != nil {
 			sd = view.Date(*t.StartDate)
 		}
-		cards = append(cards, tripCard{TripPlan: t, TotalText: service.Money(tt.TotalCents, tt.Currency), Status: status, StartDateText: sd})
+		funding := fmt.Sprintf("over %d months", tt.MonthsToSave)
+		if tt.OneShot {
+			funding = "in one go from " + fundingAccountName(in, tt)
+		}
+		cards = append(cards, tripCard{TripPlan: t, TotalText: service.Money(tt.TotalCents, tt.Currency),
+			Status: status, StartDateText: sd, FundingText: funding})
 	}
-	return tripListView{Trips: cards, Currency: in.Display}
+	return tripListView{Trips: cards, Currency: in.Display,
+		Strategies: model.TripStrategies, AccountGroups: tripAccountGroups(in.Accounts)}
 }
 
 // ─── Detail page ────────────────────────────────────────────────────────────
@@ -339,6 +425,14 @@ type tripDetailView struct {
 	TotalText   string
 	MonthlyText string
 	ByCategory  []categoryTotal
+
+	// Funding picker + the plain-language consequence of the choice.
+	Strategies       []struct{ Value, Label string }
+	AccountGroups    []acctPickerGroup
+	FundingAccountID int64  // 0 = household default
+	AccountName      string // resolved account, incl. the default
+	BalanceText      string
+	ShortfallText    string // empty when the account covers a one-shot trip
 
 	AvailableDeltaText string
 	AvailableDeltaTone string
@@ -384,7 +478,7 @@ func tripDetailData(in service.Inputs, t model.TripPlan) *tripDetailView {
 
 	var fundedSoFar int64
 	var ratio float64
-	if t.Committed {
+	if t.Committed && !tt.OneShot {
 		// ponytail: trip_plans has no committed_at column, so CreatedAt is the
 		// best available proxy for "when funding started". Add a real
 		// committed_at timestamp if precise progress tracking matters later.
@@ -411,10 +505,29 @@ func tripDetailData(in service.Inputs, t model.TripPlan) *tripDetailView {
 		sdv = *t.StartDate
 	}
 
+	f := service.FundingOf(in, tt)
+	acctName, shortfall := "the household default", ""
+	if f.Account != nil {
+		acctName = f.Account.Name
+	}
+	if f.ShortfallCents > 0 {
+		shortfall = service.Money(f.ShortfallCents, in.Display)
+	}
+	var fundingID int64
+	if t.FundingAccountID != nil {
+		fundingID = *t.FundingAccountID
+	}
+
 	return &tripDetailView{
 		Trip: t, StartDateValue: sdv, Currency: in.Display, Currencies: view.Currencies, Categories: tripCategories,
 		Totals: tt, TotalText: service.Money(tt.TotalCents, tt.Currency), MonthlyText: service.Money(tt.MonthlyCents, tt.Currency),
 		ByCategory:         byCat,
+		Strategies:         model.TripStrategies,
+		AccountGroups:      tripAccountGroups(in.Accounts),
+		FundingAccountID:   fundingID,
+		AccountName:        acctName,
+		BalanceText:        service.Money(f.BalanceCents, in.Display),
+		ShortfallText:      shortfall,
 		AvailableDeltaText: availText, AvailableDeltaTone: availTone,
 		GoalRows:         goalRows,
 		Payload:          projPayload{Series: series, Currency: in.Display, HorizonYears: service.ProjectionYears[len(service.ProjectionYears)-1]},

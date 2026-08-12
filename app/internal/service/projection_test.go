@@ -219,3 +219,100 @@ func TestProject(t *testing.T) {
 		t.Error("gold-holding run should still beat the all-general run after the same spend")
 	}
 }
+
+// The projection's own loop compounds month by month; this mirrors it in closed
+// form, which is what the expectations below are built from.
+func wantContributed(surplus, income int64, months int, growth, inflation float64, promos []Promotion) int64 {
+	var total float64
+	for m := 1; m <= months; m++ {
+		f := math.Pow((1+growth/12)/(1+inflation/12), float64(m))
+		for _, p := range promos {
+			if p.AtMonth <= m {
+				f *= 1 + p.Pct
+			}
+		}
+		total += float64(surplus) + float64(income)*(f-1)
+	}
+	return int64(total + 0.5)
+}
+
+func TestProjectIncomeGrowth(t *testing.T) {
+	const surplus, income, months = 100_000, 500_000, 24
+	streams := func(g float64, promos ...Promotion) []IncomeStream {
+		return []IncomeStream{{MonthlyNetCents: income, AnnualGrowth: g, Promotions: promos}}
+	}
+
+	tests := []struct {
+		name      string
+		growth    float64
+		inflation float64
+		promos    []Promotion
+	}{
+		{name: "no streams at all"},
+		{name: "flat pay"},
+		{name: "a raise every year", growth: 0.02},
+		{name: "a generous raise", growth: 0.08},
+		{name: "a pay cut", growth: -0.03},
+		{name: "growth exactly matching inflation is a standstill", growth: 0.02, inflation: 0.02},
+		{name: "growth below inflation loses ground", growth: 0.01, inflation: 0.03},
+		{name: "one promotion", promos: []Promotion{{AtMonth: 12, Pct: 0.10}}},
+		{name: "promotions compound", growth: 0.02, promos: []Promotion{{AtMonth: 6, Pct: 0.10}, {AtMonth: 18, Pct: 0.10}}},
+		{name: "a promotion at the last month", promos: []Promotion{{AtMonth: months, Pct: 0.10}}},
+		{name: "a demotion", promos: []Promotion{{AtMonth: 12, Pct: -0.20}}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := ProjectionSpec{StartCents: 1_000_000, MonthlyCents: surplus, Months: months, AnnualInflation: tc.inflation}
+			var want int64
+			if tc.name == "no streams at all" {
+				want = surplus * months
+			} else {
+				spec.Incomes = streams(tc.growth, tc.promos...)
+				want = wantContributed(surplus, income, months, tc.growth, tc.inflation, tc.promos)
+			}
+			// A cent of slack: the engine multiplies month by month where the
+			// expectation raises to a power.
+			if got := Project(spec).ContributedCents; got < want-1 || got > want+1 {
+				t.Errorf("ContributedCents = %d, want %d", got, want)
+			}
+		})
+	}
+
+	// Ordering: a promotion changes nothing before the month it lands.
+	late := ProjectionSpec{StartCents: 1_000_000, MonthlyCents: surplus, Months: months,
+		Incomes: streams(0.02, Promotion{AtMonth: 13, Pct: 0.15})}
+	flat := late
+	flat.Incomes = streams(0.02)
+	got, plain := Project(late), Project(flat)
+	for m := 0; m <= 12; m++ {
+		if got.Points[m] != plain.Points[m] {
+			t.Fatalf("month %d moved before the promotion: %+v vs %+v", m, got.Points[m], plain.Points[m])
+		}
+	}
+	if got.Points[13] == plain.Points[13] || got.Points[13].BalanceCents < plain.Points[13].BalanceCents {
+		t.Errorf("month 13 should be higher: %+v vs %+v", got.Points[13], plain.Points[13])
+	}
+
+	// Attribution: a promotion belongs to one stream, not to the pair. B earns
+	// twice what A does, so the same raise on B has to be worth more.
+	pair := func(promoteB bool) ProjectionSpec {
+		a := IncomeStream{MonthlyNetCents: income, AnnualGrowth: 0.02}
+		b := IncomeStream{MonthlyNetCents: 2 * income, AnnualGrowth: 0.02}
+		if promoteB {
+			b.Promotions = []Promotion{{AtMonth: 6, Pct: 0.10}}
+		} else {
+			a.Promotions = []Promotion{{AtMonth: 6, Pct: 0.10}}
+		}
+		return ProjectionSpec{StartCents: 1_000_000, MonthlyCents: surplus, Months: months, Incomes: []IncomeStream{a, b}}
+	}
+	onA, onB := Project(pair(false)).ContributedCents, Project(pair(true)).ContributedCents
+	if onB <= onA {
+		t.Errorf("promoting the bigger earner contributed %d, promoting the smaller %d", onB, onA)
+	}
+
+	// A solo household is one stream and must not reach for a second.
+	solo := ProjectionSpec{StartCents: 1_000_000, MonthlyCents: surplus, Months: months, Incomes: streams(0.02)}
+	if Project(solo).ContributedCents <= surplus*months {
+		t.Error("a growing solo income should contribute more than a flat one")
+	}
+}

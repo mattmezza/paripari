@@ -2,8 +2,10 @@ package handler
 
 import (
 	"html/template"
+	"math"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -186,6 +188,15 @@ func summarizeParams(params string) string {
 	if n := len(q["oneoff_at"]); n > 0 {
 		parts = append(parts, count(n, "one-off"))
 	}
+	// Growth only earns a mention when it is not the assumption everyone gets.
+	for _, who := range []string{"a", "b"} {
+		if f, err := strconv.ParseFloat(q.Get("growth_"+who), 64); err == nil && f != defaultIncomeGrowth {
+			parts = append(parts, view.Pct(f)+" income growth")
+		}
+	}
+	if n := len(q["promo_at"]); n > 0 {
+		parts = append(parts, count(n, "raise"))
+	}
 	if q.Get("goals") == "1" {
 		parts = append(parts, "spends goals")
 	}
@@ -231,7 +242,12 @@ type projectionsViewData struct {
 	GoalSpendCents int64 // goal targets that land inside the horizon
 	OneOffs        []oneOff
 	OneOffCents    int64
-	SpentCents     int64 // OneOffCents + GoalSpendCents, for the summary line
+	// PartnerBName is empty in a solo household, which is what the template
+	// checks before offering a second set of income controls.
+	PartnerAName, PartnerBName string
+	GrowthA, GrowthB           float64
+	Promos                     []promo
+	SpentCents                 int64 // OneOffCents + GoalSpendCents, for the summary line
 
 	Goals []service.GoalProgress
 
@@ -260,6 +276,21 @@ type oneOff struct {
 	AmountStr string
 }
 
+// promo is a timed raise for one partner: at month At their pay steps up by
+// Pct. Percent is the same figure in percent units, which is what the row's
+// number input shows — the query string carries the fraction, like every other
+// rate knob.
+type promo struct {
+	At      int
+	Pct     float64
+	Percent float64
+	Who     string // "a" or "b"
+}
+
+// defaultIncomeGrowth is the assumed annual raise when the query string is
+// silent: roughly a cost-of-living adjustment.
+const defaultIncomeGrowth = 0.02
+
 // projectionKnobs is everything the query string says about the projection
 // beyond horizon and rate.
 type projectionKnobs struct {
@@ -268,6 +299,8 @@ type projectionKnobs struct {
 	inflation  float64
 	spendGoals bool
 	oneOffs    []oneOff
+	growth     map[string]float64 // "a"/"b" → assumed annual income growth
+	promos     []promo
 }
 
 func parseProjectionKnobs(r *http.Request) projectionKnobs {
@@ -294,7 +327,55 @@ func parseProjectionKnobs(r *http.Request) projectionKnobs {
 		}
 		k.oneOffs = append(k.oneOffs, oneOff{At: months, Cents: cents, AmountStr: CentsToStr(cents)})
 	}
+	// A missing growth knob means the default, not zero: a projection saved
+	// before this knob existed still assumes the usual cost-of-living raise.
+	k.growth = map[string]float64{"a": defaultIncomeGrowth, "b": defaultIncomeGrowth}
+	for who := range k.growth {
+		// Negative on purpose: a pay cut is a scenario worth being able to draw.
+		if f, err := strconv.ParseFloat(q.Get("growth_"+who), 64); err == nil && f >= -0.10 && f <= 0.10 {
+			k.growth[who] = f
+		}
+	}
+	// Same positional pairing as the one-offs, one array wider: which partner.
+	pats, ppcts, pwhos := q["promo_at"], q["promo_pct"], q["promo_who"]
+	for i, at := range pats {
+		if i >= len(ppcts) || i >= len(pwhos) {
+			break
+		}
+		months := atoiDefault(at, 0)
+		pct, err := strconv.ParseFloat(ppcts[i], 64)
+		who := pwhos[i]
+		if err != nil || months < 1 || pct < -1 || pct > 2 || (who != "a" && who != "b") {
+			continue
+		}
+		// Rounded because 0.08*100 is not 8 in binary floating point, and this
+		// number is typed straight back into the row's input.
+		k.promos = append(k.promos, promo{At: months, Pct: pct, Percent: math.Round(pct*10000) / 100, Who: who})
+	}
 	return k
+}
+
+// incomeStreams turns each partner's net income into an engine growth stream.
+// A solo household has a zero-value partner B: it gets no stream, and the
+// promotion rows aimed at it were already dropped in projectionsData.
+func incomeStreams(ov service.MonthlyOverview, k projectionKnobs) []service.IncomeStream {
+	var out []service.IncomeStream
+	for _, p := range []struct {
+		who string
+		cf  service.PartnerCashflow
+	}{{"a", ov.A}, {"b", ov.B}} {
+		if p.cf.UserID == 0 {
+			continue
+		}
+		s := service.IncomeStream{MonthlyNetCents: p.cf.NetIncomeCents, AnnualGrowth: k.growth[p.who]}
+		for _, pr := range k.promos {
+			if pr.Who == p.who {
+				s.Promotions = append(s.Promotions, service.Promotion{AtMonth: pr.At, Pct: pr.Pct})
+			}
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 // applyExclusions drops the unticked pieces of the starting balance and reports
@@ -353,6 +434,10 @@ func projectionsData(d *Deps, in service.Inputs, r *http.Request) *projectionsVi
 	ov := service.BuildOverview(in)
 	goals := service.GoalProgresses(in, ov)
 
+	if ov.B.UserID == 0 {
+		k.promos = slices.DeleteFunc(k.promos, func(p promo) bool { return p.Who == "b" })
+	}
+
 	months := horizon * 12
 	events := map[int]int64{}
 	for _, o := range k.oneOffs {
@@ -386,22 +471,23 @@ func projectionsData(d *Deps, in service.Inputs, r *http.Request) *projectionsVi
 		// when gold is unticked (in.Gold is nil'd there).
 		GoldCents:    nw.AlternativeCents,
 		AnnualReturn: rate, GoldAnnualReturn: goldRate, AnnualInflation: k.inflation, Events: events, Months: months,
+		Incomes: incomeStreams(ov, k),
 	}
 	proj := service.Project(spec)
 	pts := proj.Points
 	last := pts[len(pts)-1]
 
-	contributed := ov.SurplusCents * int64(months)
-
 	pd := &projectionsViewData{
 		HorizonYears: horizon, Rate: rate, RatePct: int(rate*200 + 0.5), Currency: in.Display,
 		StartCents: nw.TotalCents, SurplusCents: ov.SurplusCents,
 		LiquidCents: nw.LiquidCents, GoldCents: nw.AlternativeCents, PropertyCents: nw.RealEstateCents,
-		ValueAtHorizonCents: last.BalanceCents, ContributedCents: contributed, GrowthCents: proj.GrowthCents,
+		ValueAtHorizonCents: last.BalanceCents, ContributedCents: proj.ContributedCents, GrowthCents: proj.GrowthCents,
 		GoldRate:   goldRate,
 		StartItems: startItems, CashCents: k.cashCents, CashStr: CentsToStr(k.cashCents),
 		Inflation: k.inflation, SpendGoals: k.spendGoals, GoalSpendCents: goalSpend,
 		OneOffs: k.oneOffs, OneOffCents: oneOffTotal, SpentCents: oneOffTotal + goalSpend,
+		PartnerAName: ov.A.Name, PartnerBName: ov.B.Name,
+		GrowthA: k.growth["a"], GrowthB: k.growth["b"], Promos: k.promos,
 		Goals: goals,
 	}
 
@@ -441,6 +527,9 @@ func projectionsData(d *Deps, in service.Inputs, r *http.Request) *projectionsVi
 				scSpec.StartCents, scSpec.MonthlyCents = scNW.TotalCents, scOv.SurplusCents
 				scSpec.AnnualReturn = scIn.AnnualReturnRate
 				scSpec.GoldCents = scNW.AlternativeCents // gold rate carries over from the slider
+				// The raises are assumptions about the people, not about this
+				// scenario, so they apply to whatever income the scenario leaves them.
+				scSpec.Incomes = incomeStreams(scOv, k)
 				scPts := service.Project(scSpec).Points
 				token := colorTokens[ci%len(colorTokens)]
 				ci++

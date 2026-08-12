@@ -2,11 +2,26 @@ package store
 
 import "github.com/mattmezza/paripari/internal/model"
 
-const tripCols = `id, household_id, name, start_date, months_to_save, committed, created_at`
+const tripCols = `id, household_id, name, start_date, months_to_save, committed,
+	funding_account_id, funding_strategy, linked_expense_id, created_at`
+
+// scanTrip keeps the two readers of tripCols in step.
+func scanTrip(sc interface{ Scan(...any) error }, t *model.TripPlan) error {
+	return sc.Scan(&t.ID, &t.HouseholdID, &t.Name, &t.StartDate, &t.MonthsToSave, &t.Committed,
+		&t.FundingAccountID, &t.FundingStrategy, &t.LinkedExpenseID, &t.CreatedAt)
+}
+
+// tripAccountOwned scopes funding_account_id to the household: a foreign
+// account id is written as NULL (the household default) rather than stored.
+// Handlers reject it before getting here; this is the belt to that braces.
+const tripAccountOwned = `(SELECT id FROM accounts WHERE id = ? AND household_id = ?)`
 
 func (s *Store) CreateTrip(t *model.TripPlan) (int64, error) {
-	res, err := s.DB.Exec(`INSERT INTO trip_plans (household_id, name, start_date, months_to_save, committed, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)`, t.HouseholdID, t.Name, t.StartDate, t.MonthsToSave, t.Committed, now())
+	res, err := s.DB.Exec(`INSERT INTO trip_plans
+		(household_id, name, start_date, months_to_save, committed, funding_account_id, funding_strategy, linked_expense_id, created_at)
+		VALUES (?, ?, ?, ?, ?, `+tripAccountOwned+`, ?, ?, ?)`,
+		t.HouseholdID, t.Name, t.StartDate, t.MonthsToSave, t.Committed,
+		t.FundingAccountID, t.HouseholdID, strategyOrDefault(t.FundingStrategy), t.LinkedExpenseID, now())
 	if err != nil {
 		return 0, err
 	}
@@ -14,9 +29,21 @@ func (s *Store) CreateTrip(t *model.TripPlan) (int64, error) {
 }
 
 func (s *Store) UpdateTrip(t *model.TripPlan) error {
-	_, err := s.DB.Exec(`UPDATE trip_plans SET name = ?, start_date = ?, months_to_save = ?, committed = ?
-		WHERE id = ? AND household_id = ?`, t.Name, t.StartDate, t.MonthsToSave, t.Committed, t.ID, t.HouseholdID)
+	_, err := s.DB.Exec(`UPDATE trip_plans SET name = ?, start_date = ?, months_to_save = ?, committed = ?,
+		funding_account_id = `+tripAccountOwned+`, funding_strategy = ?, linked_expense_id = ?
+		WHERE id = ? AND household_id = ?`,
+		t.Name, t.StartDate, t.MonthsToSave, t.Committed,
+		t.FundingAccountID, t.HouseholdID, strategyOrDefault(t.FundingStrategy), t.LinkedExpenseID,
+		t.ID, t.HouseholdID)
 	return err
+}
+
+// strategyOrDefault keeps the NOT NULL column honest for zero-valued structs.
+func strategyOrDefault(s string) string {
+	if model.ValidTripStrategy(s) {
+		return s
+	}
+	return model.TripSpread
 }
 
 func (s *Store) DeleteTrip(householdID, id int64) error {
@@ -26,8 +53,7 @@ func (s *Store) DeleteTrip(householdID, id int64) error {
 
 func (s *Store) Trip(householdID, id int64) (*model.TripPlan, error) {
 	var t model.TripPlan
-	err := s.DB.QueryRow(`SELECT `+tripCols+` FROM trip_plans WHERE id = ? AND household_id = ?`, id, householdID).
-		Scan(&t.ID, &t.HouseholdID, &t.Name, &t.StartDate, &t.MonthsToSave, &t.Committed, &t.CreatedAt)
+	err := scanTrip(s.DB.QueryRow(`SELECT `+tripCols+` FROM trip_plans WHERE id = ? AND household_id = ?`, id, householdID), &t)
 	if err != nil {
 		return nil, mapNoRows(err)
 	}
@@ -45,8 +71,7 @@ func (s *Store) Trips(householdID int64) ([]model.TripPlan, error) {
 	var out []model.TripPlan
 	for rows.Next() {
 		var t model.TripPlan
-		if err := rows.Scan(&t.ID, &t.HouseholdID, &t.Name, &t.StartDate, &t.MonthsToSave,
-			&t.Committed, &t.CreatedAt); err != nil {
+		if err := scanTrip(rows, &t); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

@@ -8,7 +8,9 @@
   <canvas x-ref="canvas" style="height:260px;max-height:320px" aria-label="Net worth projection chart" role="img"></canvas>
 
   <form id="projection-form" hx-get="/projections/data" hx-target="#projection-data" hx-swap="innerHTML"
-        hx-trigger="change, input delay:300ms from:#return-rate, input delay:300ms from:#inflation-rate, input delay:300ms from:#gold-rate">
+        {{/* Every slider on the page lives in this form, so one `from:` covers
+             them all — including the ones that only exist for some households. */}}
+        hx-trigger="change, input delay:300ms from:input[type=range]">
     <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-block-start:1rem" role="radiogroup" aria-label="Horizon">
       {{$horizon := $d.HorizonYears}}
       <label class="btn btn--sm" style="cursor:pointer"><input type="radio" name="horizon" value="1" style="accent-color:var(--color-accent);margin-inline-end:.375rem" {{if eq $horizon 1}}checked{{end}}>1y</label>
@@ -76,6 +78,31 @@
       </div>
     </div>
 
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.75rem;margin-block-start:1rem">
+      <div class="field">
+        <label class="label" for="growth-a">{{$d.PartnerAName}}'s annual income growth</label>
+        <div style="display:flex;align-items:center;gap:.75rem">
+          <input type="range" id="growth-a" min="-0.10" max="0.10" step="0.001" value="{{$d.GrowthA}}"
+            name="growth_a" style="flex:1;accent-color:var(--color-accent)"
+            oninput="document.getElementById('growth-a-readout').textContent = (this.value*100).toFixed(1) + '%'">
+          <span class="figure figure--sm" id="growth-a-readout" style="min-width:4.5ch;text-align:right">{{pct $d.GrowthA}}</span>
+        </div>
+        <span class="helper">Raise assumed every year. Below inflation it is a real pay cut.</span>
+      </div>
+      {{if $d.PartnerBName}}
+      <div class="field">
+        <label class="label" for="growth-b">{{$d.PartnerBName}}'s annual income growth</label>
+        <div style="display:flex;align-items:center;gap:.75rem">
+          <input type="range" id="growth-b" min="-0.10" max="0.10" step="0.001" value="{{$d.GrowthB}}"
+            name="growth_b" style="flex:1;accent-color:var(--color-accent)"
+            oninput="document.getElementById('growth-b-readout').textContent = (this.value*100).toFixed(1) + '%'">
+          <span class="figure figure--sm" id="growth-b-readout" style="min-width:4.5ch;text-align:right">{{pct $d.GrowthB}}</span>
+        </div>
+        <span class="helper">Raise assumed every year. Below inflation it is a real pay cut.</span>
+      </div>
+      {{end}}
+    </div>
+
     {{if $d.Goals}}
     <label style="display:flex;align-items:center;gap:.375rem;font-size:.875rem;margin-block-start:1rem">
       <input type="checkbox" name="goals" value="1" style="accent-color:var(--color-accent)" {{if $d.SpendGoals}}checked{{end}}>
@@ -101,6 +128,46 @@
       </div>
       <button type="button" class="btn btn--sm" style="margin-block-start:.5rem"
         @click="rows.push({At: 12, AmountStr: ''})">+ One-off expense</button>
+    </div>
+
+    {{/* Promotions: same repeatable-row shape as the one-offs above. The typed
+         figure is a percentage because that is how a raise is spoken about; the
+         hidden input next to it is what the server sees, carrying the fraction
+         every other rate knob uses. */}}
+    <div style="margin-block-start:1rem" x-data="{ rows: [] }" x-init="rows = JSON.parse($refs.init.textContent) || []">
+      <script type="application/json" x-ref="init">{{json $d.Promos}}</script>
+      <div class="label">Promotions</div>
+      <div style="display:grid;gap:.5rem">
+        <template x-for="(row, i) in rows" :key="i">
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
+            <span class="helper" style="min-height:0">in</span>
+            <input class="input" type="number" min="1" step="1" name="promo_at" x-model="row.At"
+              style="width:6rem" aria-label="Months from now">
+            <span class="helper" style="min-height:0">months,</span>
+            {{/* The plain oninput keeps the hidden field right *now*: a stepper
+                 click fires input and change in one go, and htmx would serialise
+                 the form before Alpine got round to flushing its binding. */}}
+            <input class="input input--figure" type="number" min="-50" max="200" step="0.5"
+              x-model.number="row.Percent" style="width:6rem" aria-label="Raise, percent"
+              oninput="this.nextElementSibling.value = (this.value/100).toFixed(4)">
+            <input type="hidden" name="promo_pct" :value="(row.Percent/100).toFixed(4)">
+            <span class="helper" style="min-height:0">% for</span>
+            {{if $d.PartnerBName}}
+            <select class="select" name="promo_who" x-model="row.Who" style="width:auto" aria-label="Whose pay">
+              <option value="a">{{$d.PartnerAName}}</option>
+              <option value="b">{{$d.PartnerBName}}</option>
+            </select>
+            {{else}}
+            <span class="helper" style="min-height:0">{{$d.PartnerAName}}</span>
+            <input type="hidden" name="promo_who" value="a">
+            {{end}}
+            <button type="button" class="btn btn--sm btn--ghost"
+              @click="rows.splice(i,1); document.getElementById('projection-form').dispatchEvent(new Event('change',{bubbles:true}))">Remove</button>
+          </div>
+        </template>
+      </div>
+      <button type="button" class="btn btn--sm" style="margin-block-start:.5rem"
+        @click="rows.push({At: 24, Percent: 5, Who: 'a'})">+ Promotion</button>
     </div>
 
     {{if $d.Scenarios}}

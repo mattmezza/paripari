@@ -416,9 +416,25 @@ func (s *Store) ImportHousehold(householdID int64, b *Backup) (ImportCounts, err
 	}
 
 	for _, t := range b.TripPlans {
-		tid, err := ins(`INSERT INTO trip_plans (household_id, name, start_date, months_to_save, committed, created_at)
-			VALUES (?, ?, ?, ?, ?, ?)`,
-			householdID, t.Name, t.StartDate, t.MonthsToSave, t.Committed, stamp(t.CreatedAt))
+		// Both foreign keys are remapped onto the rows this import just wrote;
+		// an account or expense that did not survive leaves the trip on the
+		// household default rather than pointing at a stranger's row.
+		var fundAcc, linkedExp *int64
+		if t.FundingAccountID != nil {
+			if id, ok := accMap[*t.FundingAccountID]; ok {
+				fundAcc = &id
+			}
+		}
+		if t.LinkedExpenseID != nil {
+			if id, ok := expMap[*t.LinkedExpenseID]; ok {
+				linkedExp = &id
+			}
+		}
+		tid, err := ins(`INSERT INTO trip_plans
+			(household_id, name, start_date, months_to_save, committed, funding_account_id, funding_strategy, linked_expense_id, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			householdID, t.Name, t.StartDate, t.MonthsToSave, t.Committed,
+			fundAcc, strategyOrDefault(t.FundingStrategy), linkedExp, stamp(t.CreatedAt))
 		if err != nil {
 			return c, err
 		}
