@@ -72,6 +72,7 @@ func snapshot(t *testing.T, st *store.Store, hhID int64) *store.Backup {
 type tally struct {
 	Incomes, Deductions, Expenses, Accounts, CC, Assets, Gold, Goals int
 	Scenarios, Changes, Trips, Items, NetWorth, Financial            int
+	SavedProjections                                                 int
 }
 
 func count(b *store.Backup) tally {
@@ -91,6 +92,7 @@ func count(b *store.Backup) tally {
 		c.Items += len(tp.Items)
 	}
 	c.NetWorth, c.Financial = len(b.NetWorthSnapshots), len(b.FinancialSnapshots)
+	c.SavedProjections = len(b.SavedProjections)
 	return c
 }
 
@@ -192,6 +194,11 @@ func seedBackupData(t *testing.T, st *store.Store, hhID, userID int64) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := st.CreateSavedProjection(&model.SavedProjection{
+		HouseholdID: hhID, Name: "Cautious", Params: "horizon=5&rate=0.03",
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if err := st.PutFinancialSnapshot(&model.FinancialSnapshot{
 		HouseholdID: hhID, Date: "2026-01-01", Currency: "CHF",
 		IncomeCents: 900_000, ExpensesCents: 88_850, AvailableCents: 811_150,
@@ -208,7 +215,8 @@ func TestBackupRoundTrip(t *testing.T) {
 
 	before := snapshot(t, st, hh)
 	want := tally{Incomes: 1, Deductions: 2, Expenses: 2, Accounts: 3, CC: 1, Assets: 1, Gold: 1,
-		Goals: 1, Scenarios: 1, Changes: 1, Trips: 1, Items: 1, NetWorth: 1, Financial: 1}
+		Goals: 1, Scenarios: 1, Changes: 1, Trips: 1, Items: 1, NetWorth: 1, Financial: 1,
+		SavedProjections: 1}
 	if got := count(before); got != want {
 		t.Fatalf("seed exported as %+v, want %+v", got, want)
 	}
@@ -271,6 +279,10 @@ func TestBackupRoundTrip(t *testing.T) {
 		if d.Name == "Pension" && d.AmountCents != 45_000 {
 			t.Errorf("pension deduction = %+v", d)
 		}
+	}
+	// A saved projection keeps its query string verbatim — it is the whole row.
+	if len(after.SavedProjections) != 1 || after.SavedProjections[0].Params != "horizon=5&rate=0.03" {
+		t.Errorf("saved projections = %+v", after.SavedProjections)
 	}
 	// The scenario change still targets the (new) groceries expense.
 	if len(after.Scenarios) != 1 || len(after.Scenarios[0].Changes) != 1 {

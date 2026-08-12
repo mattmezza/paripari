@@ -91,6 +91,7 @@ type expenseFormData struct {
 	PartnerBName string
 	HasPartner   bool
 	Accounts     []model.Account
+	Kinds        []struct{ Value, Label string }
 	AccountID    int64 // 0 = household default
 	OwnerIsB     bool  // Exp.UserID belongs to partner B — *int64 doesn't compare cleanly in templates
 }
@@ -107,6 +108,19 @@ func registerExpenses(mux *http.ServeMux, d *Deps) {
 		data.CSRF = auth.FromContext(r).Token
 		d.View.Render(w, r, "expenses", &view.PageData{
 			Data: expensesPageData{List: data, Summary: newExpensesSummaryView(service.BuildOverview(in))},
+		})
+	})
+
+	// The analysis view is read-only: same expenses, grouped by subcategory
+	// and laid out as flows instead of rows.
+	mux.HandleFunc("GET /expenses/analysis", func(w http.ResponseWriter, r *http.Request) {
+		in, err := BuildInputs(d, r)
+		if err != nil {
+			http.Error(w, "could not load household", http.StatusInternalServerError)
+			return
+		}
+		d.View.Render(w, r, "expenses-analysis", &view.PageData{
+			Title: "Expense analysis", Data: service.BuildBreakdown(in),
 		})
 	})
 
@@ -221,9 +235,12 @@ func writeExpensesList(d *Deps, w http.ResponseWriter, r *http.Request, filter s
 }
 
 func newExpenseFormData(exp model.Expense, sess *auth.Session, isNew bool, accounts []model.Account) *expenseFormData {
+	if exp.Kind == "" {
+		exp.Kind = model.KindExpense
+	}
 	f := &expenseFormData{
 		Exp: exp, AmountStr: CentsToStr(exp.AmountCents), IsNew: isNew, CSRF: sess.Token, Currencies: view.Currencies,
-		PartnerAID: sess.User.ID, PartnerAName: sess.User.Name, Accounts: accounts,
+		PartnerAID: sess.User.ID, PartnerAName: sess.User.Name, Accounts: accounts, Kinds: model.ExpenseKinds,
 	}
 	if exp.AccountID != nil {
 		f.AccountID = *exp.AccountID
@@ -275,14 +292,15 @@ func parseExpenseForm(r *http.Request, sess *auth.Session, existing *model.Expen
 	if r.PostForm.Has("subcategory") {
 		exp.Subcategory = r.PostFormValue("subcategory")
 	}
-	if r.PostForm.Has("is_savings") {
-		exp.IsSavings = r.PostFormValue("is_savings") == "true"
+	if r.PostForm.Has("kind") {
+		exp.Kind = r.PostFormValue("kind")
+		if !model.ValidExpenseKind(exp.Kind) {
+			return exp, "Choose a valid tag."
+		}
 	}
-	if exp.Subcategory == "savings" {
-		// A "savings" subcategory with the tag unset would silently zero the
-		// dashboard's Savings figure — the subcategory wins.
-		exp.IsSavings = true
-	}
+	// A "savings" subcategory with the tag left on "Regular expense" would
+	// silently zero the dashboard's Savings figure — the subcategory wins.
+	exp.Kind = model.KindForSubcategory(exp.Kind, exp.Subcategory)
 	if r.PostForm.Has("account_id") {
 		exp.AccountID = nil
 		if v := r.PostFormValue("account_id"); v != "" {

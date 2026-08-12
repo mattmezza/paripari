@@ -114,7 +114,7 @@ func BuildOverview(in Inputs) MonthlyOverview {
 			} else if e.UserID == nil || *e.UserID != ov.A.UserID {
 				continue // orphan personal expense
 			}
-			if e.IsSavings {
+			if e.IsSavings() {
 				p.PersonalSavingsCents += amt
 				ov.PersonalSavingsCents += amt
 			} else {
@@ -126,7 +126,7 @@ func BuildOverview(in Inputs) MonthlyOverview {
 		a, b := ShareOf(amt, ratio)
 		ov.A.CommonShareCents += a
 		ov.B.CommonShareCents += b
-		if e.IsSavings {
+		if e.IsSavings() {
 			ov.CommonSavingsCents += amt
 			ov.A.CommonSavingsShareCents += a
 			ov.B.CommonSavingsShareCents += b

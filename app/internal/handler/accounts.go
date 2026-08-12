@@ -8,6 +8,7 @@ import (
 	"github.com/mattmezza/paripari/internal/auth"
 	"github.com/mattmezza/paripari/internal/jobs"
 	"github.com/mattmezza/paripari/internal/model"
+	"github.com/mattmezza/paripari/internal/service"
 	"github.com/mattmezza/paripari/internal/view"
 )
 
@@ -15,21 +16,12 @@ import (
 // are rendered as their own special card (see cc-card.html), not in a group.
 var purposeOrder = []string{"checking", "savings", "investment", "envelope", "pension"}
 
-var purposeLabel = map[string]string{
-	"checking":   "Checking",
-	"savings":    "Savings",
-	"investment": "Investment",
-	"envelope":   "Budget envelopes",
-	"pension":    "Pension",
-	"cc_buffer":  "Credit card buffer",
-}
-
 // acctRow is one account plus its owner's display name ("" for a household
 // account).
 type acctRow struct {
 	model.Account
 	OwnerName    string
-	OwnerID      int64 // 0 = household account; else PartnerA.ID or PartnerB.ID
+	OwnerID      int64  // 0 = household account; else PartnerA.ID or PartnerB.ID
 	BalanceInput string // plain "1234.50" for the inline-editable balance field
 }
 
@@ -140,7 +132,7 @@ func buildAccountsData(d *Deps, r *http.Request) (*accountsData, error) {
 		for _, row := range rows {
 			tot += d.Rates.Convert(row.BalanceCents, row.Currency, hh.DisplayCurrency)
 		}
-		data.Groups = append(data.Groups, acctGroup{Purpose: p, Label: purposeLabel[p], Accounts: rows, TotalCents: tot})
+		data.Groups = append(data.Groups, acctGroup{Purpose: p, Label: service.PurposeLabel(p), Accounts: rows, TotalCents: tot})
 	}
 	return data, nil
 }

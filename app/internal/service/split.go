@@ -17,6 +17,14 @@ type Ratio struct {
 // does the fifty_fifty method.
 func SplitRatio(h model.Household, incomes map[int64]PartnerIncome, aUserID, bUserID int64) Ratio {
 	r := Ratio{AUserID: aUserID, BUserID: bUserID, A: 0.5, B: 0.5, Method: h.SplitMethod}
+	if bUserID == 0 {
+		// Nobody has joined yet. Splitting fifty-fifty with a partner who does
+		// not exist charges the one member for half the common expenses and
+		// leaves the other half owed by nobody — every figure downstream
+		// (available cash, transfers, projections) inherits the hole.
+		r.A, r.B = 1, 0
+		return r
+	}
 	if h.SplitMethod != "income_weighted" {
 		r.Method = "fifty_fifty"
 		return r

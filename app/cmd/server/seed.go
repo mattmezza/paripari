@@ -60,7 +60,7 @@ func seed(st *store.Store) error {
 		{HouseholdID: hh.ID, Name: "Utilities", AmountCents: 22_000, Currency: "CHF", Category: "common", Subcategory: "housing"},
 		{HouseholdID: hh.ID, Name: "Health insurance", AmountCents: 68_000, Currency: "CHF", Category: "common", Subcategory: "insurance"},
 		{HouseholdID: hh.ID, Name: "Groceries", AmountCents: 90_000, Currency: "CHF", Category: "common", Subcategory: "food"},
-		{HouseholdID: hh.ID, Name: "Common savings", AmountCents: 150_000, Currency: "CHF", Category: "common", Subcategory: "savings", IsSavings: true},
+		{HouseholdID: hh.ID, Name: "Common savings", AmountCents: 150_000, Currency: "CHF", Category: "common", Subcategory: "savings", Kind: model.KindSavings},
 		{HouseholdID: hh.ID, Name: "Gym", AmountCents: 9_000, Currency: "CHF", Category: "personal", UserID: &elena.ID, Subcategory: "health"},
 		{HouseholdID: hh.ID, Name: "Motorbike", AmountCents: 18_000, Currency: "CHF", Category: "personal", UserID: &marco.ID, Subcategory: "transport"},
 	}

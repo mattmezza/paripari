@@ -106,7 +106,8 @@ func TestSignupLoginDashboard(t *testing.T) {
 	c := sessionCookie(t, w)
 
 	for _, path := range []string{"/", "/income", "/expenses", "/accounts", "/transfers",
-		"/net-worth", "/gold", "/goals", "/scenarios", "/trips", "/projections", "/settings"} {
+		"/net-worth", "/gold", "/goals", "/scenarios", "/trips", "/projections", "/settings",
+		"/expenses/analysis"} {
 		r := httptest.NewRequest(http.MethodGet, path, nil)
 		r.AddCookie(c)
 		w := httptest.NewRecorder()

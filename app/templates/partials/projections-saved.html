@@ -1,0 +1,81 @@
+{{/*
+  Saved projections: a name plus the assumptions currently set on the page.
+  Both write buttons hx-include #projection-form, so what is stored is the
+  state the user is looking at — there is no second form re-entering knobs.
+  Every mutation swaps this whole region (outerHTML), which rebuilds the
+  Alpine wrapper with open:false and so closes the form.
+
+  Dot is *handler.savedProjectionsData.
+*/}}
+{{define "projections-saved"}}
+<section class="card" id="saved-projections" x-data="{ open: false, edit: 0 }" style="margin-block-start:1rem">
+  <div class="card__head"><span class="card__title">Saved projections</span></div>
+
+  {{if .Saved}}
+  <div class="table-scroll">
+    <table class="table">
+      <tbody>
+        {{range .Saved}}
+        <tr>
+          <td>
+            <div x-show="edit !== {{.ID}}">
+              {{/* hx-boost is on globally, so this navigates as a swap and the
+                   whole page re-renders with the saved assumptions applied. */}}
+              <a class="link" href="{{.LoadURL}}">{{.Name}}</a>
+              <div class="helper" style="min-height:0">{{.Summary}}</div>
+            </div>
+            <div x-show="edit === {{.ID}}" x-cloak id="saved-projection-edit-{{.ID}}">
+              <label class="label" for="saved-projection-name-{{.ID}}">Name</label>
+              <input class="input" id="saved-projection-name-{{.ID}}" name="name" value="{{.Name}}">
+              <span class="helper">Saving also replaces its assumptions with the ones set above.</span>
+              <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            </div>
+          </td>
+          <td style="text-align:right;white-space:nowrap">
+            <span x-show="edit !== {{.ID}}">
+              <button type="button" class="btn btn--sm btn--ghost" @click="edit = {{.ID}}">Edit</button>
+              <button type="button" class="btn btn--sm btn--danger" hx-delete="/projections/saved/{{.ID}}"
+                hx-target="#saved-projections" hx-swap="outerHTML" hx-confirm="Delete {{.Name}}?">Delete</button>
+            </span>
+            <span x-show="edit === {{.ID}}" x-cloak>
+              <button type="button" class="btn btn--sm btn--primary" hx-put="/projections/saved/{{.ID}}"
+                hx-include="#projection-form, #saved-projection-edit-{{.ID}}"
+                hx-target="#saved-projections" hx-swap="outerHTML">Save</button>
+              <button type="button" class="btn btn--sm btn--ghost" @click="edit = 0">Cancel</button>
+            </span>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <button type="button" class="btn btn--ghost" style="border-style:dashed;min-height:44px;width:100%;margin-block-start:.75rem"
+    x-show="!open" @click="open = true">+ Save these assumptions</button>
+  {{else}}
+  <div style="text-align:center;padding-block:1.5rem" x-show="!open">
+    <p class="helper" style="margin:0 0 1rem">
+      Nothing saved yet. Set the assumptions above, give them a name, and come back to compare them later.
+    </p>
+    <button type="button" class="btn btn--primary" @click="open = true">Save this projection</button>
+  </div>
+  {{end}}
+
+  <div x-show="open" x-cloak id="saved-projection-new" style="margin-block-start:.75rem">
+    <div class="field">
+      <label class="label" for="saved-projection-new-name">Name</label>
+      <input class="input" id="saved-projection-new-name" name="name" placeholder="e.g. Cautious 3%">
+      <span class="helper">Saves every assumption currently set above.</span>
+    </div>
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <span id="saved-projection-error"></span>
+    <div style="display:flex;gap:.5rem;margin-block-start:.5rem">
+      <button type="button" class="btn btn--primary" hx-post="/projections/saved"
+        hx-include="#projection-form, #saved-projection-new"
+        hx-target="#saved-projections" hx-swap="outerHTML">Save projection</button>
+      <button type="button" class="btn btn--ghost" @click="open = false">Cancel</button>
+    </div>
+  </div>
+</section>
+{{end}}
+
+{{template "projections-saved" .}}

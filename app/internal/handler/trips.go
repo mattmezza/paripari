@@ -212,7 +212,7 @@ func registerTrips(mux *http.ServeMux, d *Deps) {
 		e := model.Expense{
 			HouseholdID: in.Household.ID, Name: "Trip: " + t.Name,
 			AmountCents: tt.MonthlyCents, Currency: tt.Currency,
-			Category: "common", Subcategory: tripLinkedSubcategory(t.ID), IsSavings: false,
+			Category: "common", Subcategory: tripLinkedSubcategory(t.ID), Kind: model.KindExpense,
 		}
 		if _, err := d.Store.CreateExpense(&e); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

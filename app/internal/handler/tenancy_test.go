@@ -217,3 +217,62 @@ func TestCCTransactionsAreTenantScoped(t *testing.T) {
 		t.Errorf("A's cashback = %d, want 10 (%v)", cb, err)
 	}
 }
+
+// Saved projections are a top-level table reached by id, so the household
+// predicate has to be in every statement, not in the handler.
+func TestSavedProjectionsAreTenantScoped(t *testing.T) {
+	h, st := newServerStore(t)
+	cookieA, hhA := signup(t, h, st, "sp-a@example.com")
+	_, hhB := signup(t, h, st, "sp-b@example.com")
+
+	const paramsB = "horizon=20&rate=0.07"
+	idB, err := st.CreateSavedProjection(&model.SavedProjection{
+		HouseholdID: hhB, Name: "B plan", Params: paramsB,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A cannot read B's row.
+	if rows, err := st.SavedProjections(hhA); err != nil || len(rows) != 0 {
+		t.Errorf("A read B's saved projections: %+v (%v)", rows, err)
+	}
+	// A cannot rewrite or delete it through the routes, ...
+	do(t, h, http.MethodPut, "/projections/saved/"+itoa(idB),
+		url.Values{"name": {"Pwned"}, "rate": {"0.01"}, "horizon": {"1"}}, cookieA)
+	do(t, h, http.MethodDelete, "/projections/saved/"+itoa(idB), nil, cookieA)
+	// ... nor by calling the store with its own household id.
+	if err := st.UpdateSavedProjection(&model.SavedProjection{
+		ID: idB, HouseholdID: hhA, Name: "Pwned", Params: "horizon=1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteSavedProjection(hhA, idB); err != nil {
+		t.Fatal(err)
+	}
+
+	rowsB, err := st.SavedProjections(hhB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rowsB) != 1 || rowsB[0].Name != "B plan" || rowsB[0].Params != paramsB {
+		t.Errorf("B's saved projection was tampered with: %+v", rowsB)
+	}
+
+	// The same-household path still works.
+	if w := postHX(t, h, "/projections/saved", url.Values{
+		"name": {"A plan"}, "rate": {"0.03"}, "horizon": {"5"},
+	}, cookieA); w.Code != http.StatusOK {
+		t.Fatalf("POST own saved projection: %d: %s", w.Code, w.Body.String())
+	}
+	rowsA, err := st.SavedProjections(hhA)
+	if err != nil || len(rowsA) != 1 || rowsA[0].Name != "A plan" {
+		t.Fatalf("A's own saved projections = %+v (%v)", rowsA, err)
+	}
+	if w := do(t, h, http.MethodDelete, "/projections/saved/"+itoa(rowsA[0].ID), nil, cookieA); w.Code != http.StatusOK {
+		t.Fatalf("DELETE own saved projection: %d", w.Code)
+	}
+	if rows, _ := st.SavedProjections(hhA); len(rows) != 0 {
+		t.Errorf("A's own saved projection survived: %+v", rows)
+	}
+}

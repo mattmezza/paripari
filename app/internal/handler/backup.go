@@ -329,6 +329,19 @@ func ValidateBackup(b *store.Backup) error {
 		}
 	}
 
+	for i, p := range b.SavedProjections {
+		if strings.TrimSpace(p.Name) == "" {
+			return fmt.Errorf("saved projection #%d has no name", i+1)
+		}
+		// Params is deliberately not validated beyond its size: it is a query
+		// string the projections page re-parses, and every knob there already
+		// falls back to its default when the value is missing or junk.
+		if len(p.Params) > maxSavedParams {
+			return fmt.Errorf("saved projection #%d (%q) carries %d characters of settings, more than the %d allowed",
+				i+1, p.Name, len(p.Params), maxSavedParams)
+		}
+	}
+
 	for i, sn := range b.NetWorthSnapshots {
 		if !validDate(sn.Date) {
 			return fmt.Errorf("net worth snapshot #%d has date %q, expected YYYY-MM-DD", i+1, sn.Date)

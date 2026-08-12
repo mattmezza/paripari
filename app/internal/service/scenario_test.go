@@ -29,7 +29,7 @@ func TestApply(t *testing.T) {
 	t.Run("expense_add common", func(t *testing.T) {
 		got := Apply(base, []model.ScenarioChange{change("expense_add", nil, ptr(int64(40000)), nil, "Car lease", "transport", "")})
 		e := got.Expenses[len(got.Expenses)-1]
-		if e.Name != "Car lease" || e.AmountCents != 40000 || e.Category != "common" || e.Currency != "CHF" || e.IsSavings {
+		if e.Name != "Car lease" || e.AmountCents != 40000 || e.Category != "common" || e.Currency != "CHF" || e.IsSavings() {
 			t.Errorf("added expense = %+v", e)
 		}
 	})
@@ -37,7 +37,7 @@ func TestApply(t *testing.T) {
 	t.Run("expense_add personal savings", func(t *testing.T) {
 		got := Apply(base, []model.ScenarioChange{change("expense_add", ptr(int64(2)), ptr(int64(40000)), nil, "3a", "savings", "EUR")})
 		e := got.Expenses[len(got.Expenses)-1]
-		if e.Category != "personal" || e.UserID == nil || *e.UserID != 2 || !e.IsSavings || e.Currency != "EUR" {
+		if e.Category != "personal" || e.UserID == nil || *e.UserID != 2 || !e.IsSavings() || e.Currency != "EUR" {
 			t.Errorf("added expense = %+v", e)
 		}
 	})

@@ -1,9 +1,13 @@
 package handler
 
 import (
+	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
+	"github.com/mattmezza/paripari/internal/auth"
 	"github.com/mattmezza/paripari/internal/model"
 	"github.com/mattmezza/paripari/internal/service"
 	"github.com/mattmezza/paripari/internal/view"
@@ -26,6 +30,11 @@ func registerProjections(mux *http.ServeMux, d *Deps) {
 		}
 		pd := projectionsData(d, in, r)
 		pd.Scenarios = scenarios
+		pd.Saved, err = savedProjections(d, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		d.View.Render(w, r, "projections", &view.PageData{
 			Title: "Projections", Description: "Savings and net worth projections.", Data: pd,
 		})
@@ -47,6 +56,153 @@ func registerProjections(mux *http.ServeMux, d *Deps) {
 		w.Header().Set("HX-Trigger-After-Swap", "pp:projection-updated")
 		d.View.Partial(w, "partials/projections-chart-data", projectionsData(d, in, r))
 	})
+
+	// Save / rename+restate / delete a named set of assumptions. The knobs are
+	// not re-entered: both writing routes hx-include the projection form, so
+	// what gets stored is the state the user is looking at.
+	mux.HandleFunc("POST /projections/saved", func(w http.ResponseWriter, r *http.Request) {
+		sess := auth.FromContext(r)
+		p, formErr := parseSavedProjectionForm(r, sess.Household.ID)
+		if formErr != "" {
+			htmxFieldError(w, "#saved-projection-error", formErr)
+			return
+		}
+		if _, err := d.Store.CreateSavedProjection(&p); err != nil {
+			http.Error(w, "could not save projection", http.StatusInternalServerError)
+			return
+		}
+		renderSavedProjections(d, w, r)
+	})
+
+	mux.HandleFunc("PUT /projections/saved/{id}", func(w http.ResponseWriter, r *http.Request) {
+		sess := auth.FromContext(r)
+		p, formErr := parseSavedProjectionForm(r, sess.Household.ID)
+		if formErr != "" {
+			htmxFieldError(w, "#saved-projection-error", formErr)
+			return
+		}
+		p.ID, _ = strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err := d.Store.UpdateSavedProjection(&p); err != nil {
+			http.Error(w, "could not save projection", http.StatusInternalServerError)
+			return
+		}
+		renderSavedProjections(d, w, r)
+	})
+
+	mux.HandleFunc("DELETE /projections/saved/{id}", func(w http.ResponseWriter, r *http.Request) {
+		sess := auth.FromContext(r)
+		id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err := d.Store.DeleteSavedProjection(sess.Household.ID, id); err != nil {
+			http.Error(w, "could not delete projection", http.StatusInternalServerError)
+			return
+		}
+		renderSavedProjections(d, w, r)
+	})
+}
+
+// savedProjectionsData is the Data payload for the saved-projections region.
+type savedProjectionsData struct {
+	Saved []savedProjectionCard
+	CSRF  string
+}
+
+// savedProjectionCard is a stored row plus its assumptions decoded into the
+// one-line summary the list shows — the template never sees a query string.
+type savedProjectionCard struct {
+	model.SavedProjection
+	Summary string
+	// LoadURL is typed so html/template leaves the query string's & and =
+	// alone; a plain string in an href's query part comes out percent-escaped.
+	LoadURL template.URL
+}
+
+func savedProjections(d *Deps, r *http.Request) (*savedProjectionsData, error) {
+	sess := auth.FromContext(r)
+	rows, err := d.Store.SavedProjections(sess.Household.ID)
+	if err != nil {
+		return nil, err
+	}
+	sd := &savedProjectionsData{CSRF: sess.Token}
+	for _, p := range rows {
+		sd.Saved = append(sd.Saved, savedProjectionCard{
+			SavedProjection: p,
+			Summary:         summarizeParams(p.Params),
+			LoadURL:         template.URL("/projections?" + p.Params),
+		})
+	}
+	return sd, nil
+}
+
+func renderSavedProjections(d *Deps, w http.ResponseWriter, r *http.Request) {
+	sd, err := savedProjections(d, r)
+	if err != nil {
+		http.Error(w, "could not load saved projections", http.StatusInternalServerError)
+		return
+	}
+	d.View.Partial(w, "partials/projections-saved", sd)
+}
+
+// maxSavedParams caps the stored query string. The form that produces it is an
+// order of magnitude smaller; the cap only stops a hand-crafted POST from
+// parking an unbounded blob in the row.
+const maxSavedParams = 4096
+
+func parseSavedProjectionForm(r *http.Request, householdID int64) (model.SavedProjection, string) {
+	r.ParseForm()
+	p := model.SavedProjection{HouseholdID: householdID, Name: strings.TrimSpace(r.PostFormValue("name"))}
+	if p.Name == "" {
+		return p, "Name is required."
+	}
+	// ponytail: every posted field except the form's own two becomes a param,
+	// rather than a whitelist of knob names that would need editing whenever a
+	// knob is added. Ceiling: a hand-crafted POST can store fields the page
+	// ignores on load; the length cap is what keeps that bounded.
+	q := url.Values{}
+	for k, vs := range r.PostForm {
+		if k == "name" || k == "csrf_token" {
+			continue
+		}
+		q[k] = vs
+	}
+	p.Params = q.Encode()
+	if len(p.Params) > maxSavedParams {
+		return p, "That is more settings than a saved projection can hold."
+	}
+	return p, ""
+}
+
+// summarizeParams decodes a stored query string into "5.0% · 10 years · …", so
+// two saved projections can be told apart without loading them.
+func summarizeParams(params string) string {
+	q, _ := url.ParseQuery(params) // a summary is not a trust boundary: junk just summarises as defaults
+	var parts []string
+	if f, err := strconv.ParseFloat(q.Get("rate"), 64); err == nil {
+		parts = append(parts, view.Pct(f))
+	}
+	parts = append(parts, count(atoiDefault(q.Get("horizon"), 10), "year"))
+	if f, err := strconv.ParseFloat(q.Get("inflation"), 64); err == nil && f > 0 {
+		parts = append(parts, view.Pct(f)+" inflation")
+	}
+	if n := len(q["oneoff_at"]); n > 0 {
+		parts = append(parts, count(n, "one-off"))
+	}
+	if q.Get("goals") == "1" {
+		parts = append(parts, "spends goals")
+	}
+	if n := len(q["scenario"]); n > 0 {
+		parts = append(parts, count(n, "overlay"))
+	}
+	if n := len(q["exclude"]); n > 0 {
+		parts = append(parts, count(n, "exclusion"))
+	}
+	return strings.Join(parts, " · ")
+}
+
+func count(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return strconv.Itoa(n) + " " + noun + "s"
 }
 
 // projectionsViewData is the Data payload for the projections page and its
@@ -82,6 +238,10 @@ type projectionsViewData struct {
 	Scenarios   []model.Scenario
 	SelectedIDs map[int64]bool
 	Payload     projPayload
+
+	// Saved is nil on the chart-data endpoint: that swap replaces the chart, not
+	// the saved-projections region.
+	Saved *savedProjectionsData
 }
 
 // startItem is one line of the starting balance the user can untick. Token is

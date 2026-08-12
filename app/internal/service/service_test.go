@@ -27,6 +27,14 @@ var testRates = fakeRates{"EUR>CHF": 0.95, "USD>CHF": 0.90, "TRY>CHF": 0.03}
 
 func ptr[T any](v T) *T { return &v }
 
+// kindOf turns the fixtures' savings booleans into the stored tag.
+func kindOf(savings bool) string {
+	if savings {
+		return model.KindSavings
+	}
+	return model.KindExpense
+}
+
 func income(id, userID int64, kind string, grossYearly int64, pay int, cur string, ded ...model.IncomeDeduction) model.IncomeSource {
 	return model.IncomeSource{
 		ID: id, UserID: userID, Kind: kind, PayStructure: pay,
@@ -35,11 +43,11 @@ func income(id, userID int64, kind string, grossYearly int64, pay int, cur strin
 }
 
 func commonExp(id int64, amount int64, cur string, savings bool) model.Expense {
-	return model.Expense{ID: id, AmountCents: amount, Currency: cur, Category: "common", IsSavings: savings}
+	return model.Expense{ID: id, AmountCents: amount, Currency: cur, Category: "common", Kind: kindOf(savings)}
 }
 
 func personalExp(id, userID, amount int64, cur string, savings bool) model.Expense {
-	return model.Expense{ID: id, AmountCents: amount, Currency: cur, Category: "personal", UserID: &userID, IsSavings: savings}
+	return model.Expense{ID: id, AmountCents: amount, Currency: cur, Category: "personal", UserID: &userID, Kind: kindOf(savings)}
 }
 
 // baseInputs: partners 1/2 earning 8'954 and 11'179 CHF net monthly, income

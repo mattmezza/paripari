@@ -113,7 +113,7 @@ func TestTripChangeIsNotSavings(t *testing.T) {
 	}
 	applied := Apply(baseInputs(), []model.ScenarioChange{c})
 	e := applied.Expenses[len(applied.Expenses)-1]
-	if e.IsSavings || e.Category != "common" || e.Name != "Trip: Japan" {
+	if e.IsSavings() || e.Category != "common" || e.Name != "Trip: Japan" {
 		t.Errorf("applied trip expense = %+v", e)
 	}
 }

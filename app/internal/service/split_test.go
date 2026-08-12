@@ -190,3 +190,19 @@ func TestSplitRatioGrossExcludesVariable(t *testing.T) {
 		t.Errorf("variable included: A = %v, want ~0.6667", r.A)
 	}
 }
+
+// A household nobody has joined yet must charge its one member the whole
+// common pool — a fifty-fifty split against a partner who does not exist
+// leaves half of every common expense owed by nobody.
+func TestSplitRatio_NoPartnerYet(t *testing.T) {
+	for _, method := range []string{"fifty_fifty", "income_weighted"} {
+		h := model.Household{SplitMethod: method}
+		r := SplitRatio(h, map[int64]PartnerIncome{1: {TotalMonthlyCents: 500000}}, 1, 0)
+		if r.A != 1 || r.B != 0 {
+			t.Errorf("%s: ratio = %v/%v, want 1/0", method, r.A, r.B)
+		}
+		if a, b := ShareOf(120000, r); a != 120000 || b != 0 {
+			t.Errorf("%s: share = %d/%d, want 120000/0", method, a, b)
+		}
+	}
+}

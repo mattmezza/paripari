@@ -50,10 +50,13 @@
     </div>
     <div class="field">
       <label class="label" for="exp-savings-{{$fid}}">Tag</label>
-      <select class="select" id="exp-savings-{{$fid}}" name="is_savings">
-        <option value="false" {{if not .Exp.IsSavings}}selected{{end}}>Regular expense</option>
-        <option value="true" {{if .Exp.IsSavings}}selected{{end}}>Savings</option>
+      <select class="select" id="exp-savings-{{$fid}}" name="kind">
+        {{$kind := .Exp.Kind}}
+        {{range .Kinds}}
+        <option value="{{.Value}}" {{if eq $kind .Value}}selected{{end}}>{{.Label}}</option>
+        {{end}}
       </select>
+      <p class="helper" style="margin-block-start:.25rem">Anything but a regular expense is money kept, not spent: it counts as savings everywhere, and the analysis shows it in its own bucket.</p>
     </div>
   </div>
 

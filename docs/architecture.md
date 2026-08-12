@@ -36,7 +36,7 @@ HTTP handlers for each section:
 - `dashboard.go` — GET /dashboard
 - `auth.go` — GET/POST /login, /signup, /logout
 - `income.go` — GET/POST /income
-- `expenses.go` — GET/POST /expenses
+- `expenses.go` — GET/POST /expenses, GET /expenses/analysis (subcategory breakdown + income sankey)
 - `accounts.go` — GET/POST /accounts
 - `transfers.go` — GET /transfers
 - `net_worth.go` — GET /net-worth
@@ -44,7 +44,7 @@ HTTP handlers for each section:
 - `goals.go` — GET/POST /goals
 - `scenarios.go` — GET/POST /scenarios
 - `trips.go` — GET/POST /trips
-- `projections.go` — GET /projections
+- `projections.go` — GET /projections, GET /projections/data (chart JSON), POST/PUT/DELETE /projections/saved (named sets of assumptions)
 - `settings.go` — GET/POST /settings
 
 Each handler is registered via a `registerX(mux *http.ServeMux, deps *Deps)` function. Handlers accept `*Deps` (store, view, auth, rates, gold provider).
@@ -119,7 +119,7 @@ Templates use Go template syntax with custom functions: `{{ money .Amount .Curre
 Embedded assets (served from FS, not disk):
 
 - `css/app.min.css` — compiled Tailwind output (committed)
-- `js/htmx.min.js`, `js/alpine.min.js`, `js/chart.umd.js` — vendored libraries (committed)
+- `js/htmx.min.js`, `js/alpine.min.js`, `js/chart.umd.js`, `js/chart-sankey.min.js` — vendored libraries (committed)
 - `fonts/` — self-hosted woff2 fonts (Space Grotesk, Inter)
 - `manifest.json` — PWA manifest
 - `sw.js` — service worker for offline viewing
@@ -142,7 +142,7 @@ All stored in SQLite. Key tables:
 | `sessions` | HTTP-only session tokens, expires after 30 days |
 | `income_sources` | Per-user income (type: fixed/variable, pay structure: 12/13, gross yearly, currency) |
 | `income_deductions` | Named deductions per income source: a fixed amount (monthly or yearly) or a percentage of gross, stored as basis points |
-| `expenses` | Monthly recurring costs (amount, currency, category: personal/common, subcategory/tag) |
+| `expenses` | Monthly recurring costs (amount, currency, category: personal/common, subcategory, kind: expense/savings/investment/pension) |
 | `accounts` | Bank accounts (name, institution, currency, balance, purpose: checking/savings/investment/cc_buffer/envelope/pension) |
 | `cc_transactions` | Credit card spends (amount, cashback, used to track CC buffer) |
 | `gold_items` | Physical gold (weight grams, purity karat, quantity, location) |
@@ -154,6 +154,7 @@ All stored in SQLite. Key tables:
 | `trip_items` | Itemized trip costs (name, category, amount, currency) |
 | `fx_rates` | Cached exchange rates (base, quote, rate, fetched_at) |
 | `gold_prices` | Cached gold spot prices (price per gram cents, currency, fetched_at) |
+| `saved_projections` | Named projection assumptions (the projections page's query string, stored verbatim) |
 | `net_worth_snapshots` | Daily net worth totals (liquid, alternative, real estate, all in CHF at snapshot time) |
 | `transfer_confirmations` | JSON snapshot of last-confirmed transfer table (used to detect changes) |
 

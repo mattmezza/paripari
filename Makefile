@@ -8,6 +8,7 @@ TAILWIND_V := v4.1.14
 HTMX_V     := 2.0.4
 ALPINE_V   := 3.14.8
 CHARTJS_V  := 4.4.7
+SANKEY_V   := 0.14.0
 
 .PHONY: help dev test build docker-build release vendor css tools seed clean
 
@@ -50,11 +51,12 @@ css: ## Build app.min.css with the Tailwind CLI (needs make tools)
 	@test -x $(TAILWIND) || (echo "run 'make tools' first" && exit 1)
 	$(TAILWIND) -i $(APP)/static/css/app.css -o $(APP)/static/css/app.min.css --minify
 
-vendor: ## Download pinned htmx / alpine / chart.js into app/static/js
+vendor: ## Download pinned htmx / alpine / chart.js / sankey into app/static/js
 	mkdir -p $(APP)/static/js
 	curl -sSL -o $(APP)/static/js/htmx.min.js   https://unpkg.com/htmx.org@$(HTMX_V)/dist/htmx.min.js
 	curl -sSL -o $(APP)/static/js/alpine.min.js https://cdn.jsdelivr.net/npm/alpinejs@$(ALPINE_V)/dist/cdn.min.js
 	curl -sSL -o $(APP)/static/js/chart.umd.js  https://cdn.jsdelivr.net/npm/chart.js@$(CHARTJS_V)/dist/chart.umd.js
+	curl -sSL -o $(APP)/static/js/chart-sankey.min.js https://cdn.jsdelivr.net/npm/chartjs-chart-sankey@$(SANKEY_V)/dist/chartjs-chart-sankey.min.js
 
 clean: ## Remove build output
 	rm -rf bin

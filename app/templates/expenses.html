@@ -10,6 +10,7 @@
   <a href="/expenses" class="btn btn--sm {{if eq $list.Filter "all"}}btn--primary{{end}}">All</a>
   <a href="/expenses?filter=common" class="btn btn--sm {{if eq $list.Filter "common"}}btn--primary{{end}}">Common</a>
   <a href="/expenses?filter=personal" class="btn btn--sm {{if eq $list.Filter "personal"}}btn--primary{{end}}">Personal</a>
+  <a href="/expenses/analysis" class="btn btn--sm" style="margin-inline-start:auto">Analysis</a>
 </div>
 
 {{template "expenses-list" $list}}

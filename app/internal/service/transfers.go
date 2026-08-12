@@ -62,7 +62,7 @@ func BuildTransfers(in Inputs, ov MonthlyOverview) TransferPlan {
 			continue
 		}
 		g := groups[0]
-		if e.IsSavings {
+		if e.IsSavings() {
 			g = groups[1]
 		}
 		if e.AccountID != nil {

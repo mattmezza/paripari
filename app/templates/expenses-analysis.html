@@ -1,0 +1,314 @@
+{{define "content"}}
+{{$d := .Data}}
+{{$cur := $d.Currency}}
+
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin-block-end:.25rem">
+  <h1 style="margin:0">Expense analysis</h1>
+  <a class="btn btn--sm" href="/expenses">Back to expenses</a>
+</div>
+<p class="helper" style="margin-block-end:1rem">
+  Where each month&rsquo;s income ends up, grouped by subcategory. Common expenses are shown
+  after the split, so every ribbon starts at the partner who actually pays it. Amounts ticked
+  as savings are money kept, not spent: they leave the spending branch and land in the account
+  they are paid into &mdash; savings, pension or investment.
+</p>
+
+{{if $d.Empty}}
+<div class="card">
+  <p class="card__title" style="margin-block-end:.25rem">Nothing to analyse yet</p>
+  <p class="auth__meta" style="margin-block-end:1rem">Add your income and a few recurring expenses and this page fills in by itself.</p>
+  <a href="/expenses" class="btn btn--sm btn--primary">Add an expense</a>
+</div>
+{{else}}
+
+<script type="application/json" id="breakdown-payload">{{json $d}}</script>
+
+<div class="card" style="margin-block-end:1rem">
+  <dl style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem 1rem;margin:0">
+    <div><dt class="label" style="margin:0">Net income</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.NetIncomeCents $cur}}</dd></div>
+    <div><dt class="label" style="margin:0">Common</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.CommonCents $cur}}</dd></div>
+    <div><dt class="label" style="margin:0">{{$d.PartnerAName}} personal</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.APersonalCents $cur}}</dd></div>
+    {{if $d.HasPartner}}
+    <div><dt class="label" style="margin:0">{{$d.PartnerBName}} personal</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.BPersonalCents $cur}}</dd></div>
+    {{end}}
+    <div><dt class="label" style="margin:0">Savings</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.SavingsCents $cur}}</dd></div>
+    <div><dt class="label" style="margin:0">Left over</dt><dd class="figure figure--sm tnum" data-tick style="margin:.125rem 0 0">{{money $d.LeftOverCents $cur}}</dd></div>
+  </dl>
+  {{if lt $d.LeftOverCents 0}}
+  <p class="helper" style="margin-block-start:.75rem;color:var(--color-warning-ink)">
+    This household plans to spend more than it earns each month, so there is no &ldquo;left over&rdquo; ribbon below.
+  </p>
+  {{end}}
+</div>
+
+<div class="card" style="margin-block-end:1rem" x-data="ppBreakdownCharts()" x-init="initSankey()">
+  <div class="card__head"><h2 class="card__title">Where the money goes</h2></div>
+  {{if $d.Sankey}}
+  <canvas x-ref="sankey" style="max-height:420px" role="img"
+          aria-label="Sankey chart: net income flowing into the common pool, each partner's personal expenses, and what is left over"></canvas>
+  <p class="helper" style="margin-block-start:.75rem">Left to right: each partner&rsquo;s net income &rarr; spent and not spent, each split into the common pool and each partner&rsquo;s own money &rarr; the subcategories behind the spending, beside where the unspent money sits. The table below says how much of the unspent money is whose.</p>
+  {{else}}
+  <p class="auth__meta" style="margin:0">No income or expenses to trace yet.</p>
+  {{end}}
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-block-end:1rem">
+  <div class="card" style="flex:1 1 320px;min-width:0" x-data="ppBreakdownCharts()" x-init="initCommon()">
+    <div class="card__head"><h2 class="card__title">Common by subcategory</h2></div>
+    {{if $d.Common}}
+    <canvas x-ref="common" style="max-height:280px" role="img" aria-label="Common expenses by subcategory"></canvas>
+    {{else}}
+    <p class="auth__meta" style="margin:0">No common expenses yet.</p>
+    {{end}}
+  </div>
+
+  <div class="card" style="flex:1 1 320px;min-width:0" x-data="ppBreakdownCharts()" x-init="initPersonal()">
+    <div class="card__head"><h2 class="card__title">Personal by subcategory</h2></div>
+    {{if $d.Personal}}
+    <canvas x-ref="personal" style="max-height:280px" role="img" aria-label="Personal expenses by subcategory, per partner"></canvas>
+    {{else}}
+    <p class="auth__meta" style="margin:0">No personal expenses yet.</p>
+    {{end}}
+  </div>
+</div>
+
+{{if $d.Common}}
+<div class="card" style="margin-block-end:1rem">
+  <div class="card__head"><h2 class="card__title">Common totals</h2></div>
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Subcategory</th><th class="num">Per month</th><th class="num">Of net income</th></tr></thead>
+      <tbody>
+        {{range $d.Common}}
+        <tr>
+          <td>{{.Subcategory}}{{if .Savings}} <span class="pill pill--positive">not spent</span>{{end}}</td>
+          <td class="num tnum">{{money .AmountCents $cur}}</td>
+          <td class="num tnum">{{pct100 .ShareBP}}</td>
+        </tr>
+        {{end}}
+        <tr>
+          <th scope="row">Total</th>
+          <td class="num tnum">{{money $d.CommonCents $cur}}</td>
+          <td class="num tnum"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+
+{{if $d.Kept}}
+<div class="card" style="margin-block-end:1rem">
+  <div class="card__head"><h2 class="card__title">Not spent</h2></div>
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Where it goes</th><th class="num">Per month</th><th class="num">{{$d.PartnerAName}}</th>{{if $d.HasPartner}}<th class="num">{{$d.PartnerBName}}</th>{{end}}</tr></thead>
+      <tbody>
+        {{range $d.Kept}}
+        <tr>
+          <td>{{.Label}}</td>
+          <td class="num tnum">{{money .AmountCents $cur}}</td>
+          <td class="num tnum">{{money .ACents $cur}}</td>
+          {{if $d.HasPartner}}<td class="num tnum">{{money .BCents $cur}}</td>{{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <p class="helper" style="margin-block-start:.75rem">Anything tagged as savings, an investment or a pension, plus whatever is simply left over at the end of the month. A common row is attributed to each partner at the household split.</p>
+</div>
+{{end}}
+
+{{if $d.Personal}}
+<div class="card">
+  <div class="card__head"><h2 class="card__title">Personal totals</h2></div>
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Subcategory</th><th class="num">{{$d.PartnerAName}}</th>{{if $d.HasPartner}}<th class="num">{{$d.PartnerBName}}</th>{{end}}<th class="num">Of net income</th></tr></thead>
+      <tbody>
+        {{range $d.Personal}}
+        <tr>
+          <td>{{.Subcategory}}{{if .Savings}} <span class="pill pill--positive">not spent</span>{{end}}</td>
+          <td class="num tnum">{{money .ACents $cur}}</td>
+          {{if $d.HasPartner}}<td class="num tnum">{{money .BCents $cur}}</td>{{end}}
+          <td class="num tnum">{{pct100 .ShareBP}}</td>
+        </tr>
+        {{end}}
+        <tr>
+          <th scope="row">Total</th>
+          <td class="num tnum">{{money $d.APersonalCents $cur}}</td>
+          {{if $d.HasPartner}}<td class="num tnum">{{money $d.BPersonalCents $cur}}</td>{{end}}
+          <td class="num tnum"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+
+{{end}}
+
+<script>
+function ppBreakdownCharts(){
+  // Same closure rule as /history: the Chart instance never becomes Alpine
+  // state, or its own options proxy gets wrapped a second time and recurses.
+  let chart = null;
+
+  const payload = () => {
+    const el = document.getElementById('breakdown-payload');
+    try { return el ? JSON.parse(el.textContent) : null; } catch(e){ return null; }
+  };
+  // The blocking head script stamps `.dark` on <html> for both the manual
+  // choice and the system preference, so this one check covers both.
+  const dark = () => document.documentElement.classList.contains('dark');
+  // Chart.js parses colours itself (for gradients and colour animations) and
+  // its parser predates oklch — handed an oklch token it yields undefined and
+  // the sankey throws. The canvas understands every CSS colour, so one pixel
+  // is painted and read back as rgb before anything reaches Chart.js.
+  const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  const rgb = (css) => {
+    probe.clearRect(0, 0, 1, 1);
+    probe.fillStyle = css;
+    probe.fillRect(0, 0, 1, 1);
+    const d = probe.getImageData(0, 0, 1, 1).data;
+    return 'rgb(' + d[0] + ',' + d[1] + ',' + d[2] + ')';
+  };
+  const colors = () => {
+    const s = getComputedStyle(document.documentElement);
+    const v = (n) => rgb(s.getPropertyValue(n).trim());
+    return { accent: v('--color-accent'), partnerB: v('--color-partner-b'),
+      positive: v('--color-positive'), warning: v('--color-warning'),
+      muted: v('--color-muted'), rule: v('--color-rule'), ink: v('--color-ink') };
+  };
+  // Categorical ramp for the two doughnut/bar charts: one hue step per slice,
+  // fixed chroma, lightness lifted in dark mode. Derived rather than tokenised
+  // because the number of subcategories is whatever the household typed.
+  const ramp = (i) => rgb('oklch(' + (dark() ? 68 : 58) + '% 0.12 ' + ((262 + i * 47) % 360) + ')');
+  const flowColor = (c) => ({ expense: c.accent, common: c.accent, personal: c.partnerB,
+    kept: c.positive, savings: c.positive, surplus: c.muted });
+  const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const watchTheme = (recolor) => {
+    window.addEventListener('pp:theme-changed', recolor);
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', recolor);
+    new MutationObserver(recolor)
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  };
+
+  const sankey = (canvas, p) => {
+    const link = (ctx) => flowColor(colors())[ctx.raw && ctx.raw.kind] || colors().muted;
+    chart = new Chart(canvas.getContext('2d'), {
+      type: 'sankey',
+      data: { datasets: [{
+        data: p.sankey.map(f => ({ from: f.from, to: f.to, flow: f.flow / 100, kind: f.kind })),
+        labels: p.labels, column: p.columns, priority: p.priority,
+        colorFrom: link, colorTo: link, colorMode: 'gradient',
+        borderWidth: 0, size: 'max',
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        // ponytail: the sankey draws static. Its plugin animates each ribbon
+        // on a per-flow delay, which leaves the chart blank for a beat and
+        // buys nothing — the shape is the message, not the reveal.
+        animation: false,
+        color: colors().ink,
+        // The last column's labels are drawn outside its nodes, so the plot
+        // area has to end before the canvas does or they get clipped.
+        layout: { padding: { right: 96, left: 4, top: 4, bottom: 4 } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: (i) => p.labels[i.raw.from] + ' \u2192 ' + p.labels[i.raw.to] + ': ' +
+            p.currency + ' ' + i.raw.flow.toLocaleString(undefined, { maximumFractionDigits: 0 }),
+        }}},
+      },
+    });
+    watchTheme(() => {
+      if (!chart) return;
+      chart.options.color = colors().ink;
+      chart.update('none');
+    });
+  };
+
+  const doughnut = (canvas, rows, cur) => {
+    chart = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: rows.map(r => r.label),
+        datasets: [{ data: rows.map(r => r.value / 100),
+          backgroundColor: rows.map((_, i) => ramp(i)), borderWidth: 0 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '58%',
+        animation: reduceMotion() ? false : { duration: 300 },
+        plugins: {
+          legend: { position: 'bottom', labels: { color: colors().ink, boxWidth: 10, usePointStyle: true } },
+          tooltip: { callbacks: { label: (i) => i.label + ': ' + cur + ' ' +
+            i.parsed.toLocaleString(undefined, { maximumFractionDigits: 0 }) } },
+        },
+      },
+    });
+    watchTheme(() => {
+      if (!chart) return;
+      chart.data.datasets[0].backgroundColor = rows.map((_, i) => ramp(i));
+      chart.options.plugins.legend.labels.color = colors().ink;
+      chart.update('none');
+    });
+  };
+
+  const bars = (canvas, p) => {
+    const rows = p.personal;
+    const spec = [{ label: p.aName, key: 'a', token: 'accent' }];
+    if (p.hasPartner) spec.push({ label: p.bName, key: 'b', token: 'partnerB' });
+    const c = colors();
+    chart = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => r.label),
+        datasets: spec.map(s => ({ label: s.label, data: rows.map(r => r[s.key] / 100),
+          backgroundColor: c[s.token], borderWidth: 0, borderRadius: 3 })),
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        animation: reduceMotion() ? false : { duration: 300 },
+        scales: {
+          x: { grid: { color: c.rule }, ticks: { color: c.muted, callback: (v) => v.toLocaleString() } },
+          y: { grid: { display: false }, ticks: { color: c.muted } },
+        },
+        plugins: {
+          legend: { display: spec.length > 1, labels: { color: c.ink, boxWidth: 10, usePointStyle: true } },
+          tooltip: { callbacks: { label: (i) => i.dataset.label + ': ' + p.currency + ' ' +
+            i.parsed.x.toLocaleString(undefined, { maximumFractionDigits: 0 }) } },
+        },
+      },
+    });
+    watchTheme(() => {
+      if (!chart) return;
+      const n = colors();
+      chart.data.datasets.forEach((ds, i) => { ds.backgroundColor = n[spec[i].token]; });
+      chart.options.scales.x.grid.color = n.rule;
+      chart.options.scales.x.ticks.color = n.muted;
+      chart.options.scales.y.ticks.color = n.muted;
+      chart.options.plugins.legend.labels.color = n.ink;
+      chart.update('none');
+    });
+  };
+
+  return {
+    initSankey(){
+      const p = payload();
+      if (!p || !p.sankey || !p.sankey.length || !this.$refs.sankey) return;
+      sankey(this.$refs.sankey, p);
+    },
+    initCommon(){
+      const p = payload();
+      if (!p || !p.common || !p.common.length || !this.$refs.common) return;
+      doughnut(this.$refs.common, p.common, p.currency);
+    },
+    initPersonal(){
+      const p = payload();
+      if (!p || !p.personal || !p.personal.length || !this.$refs.personal) return;
+      bars(this.$refs.personal, p);
+    },
+  };
+}
+</script>
+{{end}}

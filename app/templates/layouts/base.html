@@ -93,6 +93,9 @@
   <!-- Chart.js before Alpine: hx-boost swaps only <body>, so per-page head
        scripts never load on client-side navigation — every page gets it. -->
   <script src="/static/js/chart.umd.js" defer></script>
+  <!-- 12 KB sankey controller; only /expenses/analysis draws one, but the same
+       hx-boost rule applies — a per-page script tag would never load. -->
+  <script src="/static/js/chart-sankey.min.js" defer></script>
   <script src="/static/js/alpine.min.js" defer></script>
   <script src="/static/js/app.js" defer></script>
 

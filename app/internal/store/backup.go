@@ -57,6 +57,7 @@ type Backup struct {
 	TripPlans          []model.TripPlan // items nested
 	NetWorthSnapshots  []model.NetWorthSnapshot
 	FinancialSnapshots []model.FinancialSnapshot
+	SavedProjections   []model.SavedProjection
 
 	TransferConfirmation *BackupTransferConfirmation `json:",omitempty"`
 }
@@ -66,7 +67,7 @@ type ImportCounts struct {
 	Accounts, Expenses, IncomeSources, Deductions, CCTransactions int
 	Assets, GoldItems, Goals                                      int
 	Scenarios, ScenarioChanges, TripPlans, TripItems              int
-	NetWorthSnapshots, FinancialSnapshots                         int
+	NetWorthSnapshots, FinancialSnapshots, SavedProjections       int
 
 	// SkippedNoPartner counts rows that could not be written because they
 	// belong to a partner this household has no counterpart for (personal
@@ -143,6 +144,9 @@ func (s *Store) ExportHousehold(householdID int64) (*Backup, error) {
 		return nil, err
 	}
 	if b.FinancialSnapshots, err = s.FinancialSnapshots(householdID, ""); err != nil {
+		return nil, err
+	}
+	if b.SavedProjections, err = s.SavedProjections(householdID); err != nil {
 		return nil, err
 	}
 	// ponytail: only the latest confirmation — it is a "these amounts were
@@ -241,6 +245,7 @@ func (s *Store) ImportHousehold(householdID int64, b *Backup) (ImportCounts, err
 		`DELETE FROM trip_plans WHERE household_id = ?`,
 		`DELETE FROM net_worth_snapshots WHERE household_id = ?`,
 		`DELETE FROM financial_snapshots WHERE household_id = ?`,
+		`DELETE FROM saved_projections WHERE household_id = ?`,
 		`DELETE FROM transfer_confirmations WHERE household_id = ?`,
 	} {
 		if _, err := tx.Exec(q, householdID); err != nil {
@@ -344,10 +349,10 @@ func (s *Store) ImportHousehold(householdID int64, b *Backup) (ImportCounts, err
 			}
 		}
 		id, err := ins(`INSERT INTO expenses
-			(household_id, name, amount_cents, currency, category, user_id, subcategory, is_savings, account_id, created_at)
+			(household_id, name, amount_cents, currency, category, user_id, subcategory, kind, account_id, created_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			householdID, e.Name, e.AmountCents, e.Currency, e.Category, uid, e.Subcategory,
-			e.IsSavings, accID, stamp(e.CreatedAt))
+			kindOrDefault(e.Kind), accID, stamp(e.CreatedAt))
 		if err != nil {
 			return c, err
 		}
@@ -446,6 +451,14 @@ func (s *Store) ImportHousehold(householdID int64, b *Backup) (ImportCounts, err
 			return c, err
 		}
 		c.FinancialSnapshots++
+	}
+
+	for _, sp := range b.SavedProjections {
+		if _, err := ins(`INSERT INTO saved_projections (household_id, name, params, created_at) VALUES (?, ?, ?, ?)`,
+			householdID, sp.Name, sp.Params, stamp(sp.CreatedAt)); err != nil {
+			return c, err
+		}
+		c.SavedProjections++
 	}
 
 	if tc := b.TransferConfirmation; tc != nil {

@@ -41,7 +41,7 @@ func Apply(in Inputs, changes []model.ScenarioChange) Inputs {
 				HouseholdID: in.Household.ID, Name: c.Label,
 				Currency: orDefault(c.Currency, in.Display),
 				Category: "common", Subcategory: c.ValueText,
-				IsSavings: c.ValueText == "savings",
+				Kind: model.KindForSubcategory("", c.ValueText),
 			}
 			if c.ValueCents != nil {
 				e.AmountCents = *c.ValueCents

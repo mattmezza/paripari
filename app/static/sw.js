@@ -3,13 +3,14 @@
    Static assets: cache-first.
    POST and anything non-GET: never touched.
    Bump CACHE when the shell changes. */
-const CACHE = "paripari-v1";
+const CACHE = "paripari-v2";
 
 const SHELL = [
   "/static/css/app.min.css",
   "/static/js/htmx.min.js",
   "/static/js/alpine.min.js",
   "/static/js/chart.umd.js",
+  "/static/js/chart-sankey.min.js",
   "/static/js/app.js",
   "/static/fonts/inter-latin.woff2",
   "/static/fonts/space-grotesk-latin.woff2",
