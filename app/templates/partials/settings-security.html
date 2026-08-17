@@ -1,0 +1,107 @@
+{{/* Session lifetime + two-factor authentication. dot: *settingsData */}}
+{{define "settings-security"}}
+<section class="card" id="settings-security" style="margin-block-end:1.5rem">
+  <div class="card__head"><span class="card__title">Session &amp; security</span></div>
+
+  {{if .Notice}}<div class="flash flash--ok" style="margin-block-end:1rem"><span class="flash__mark">&#10003;</span><span>{{.Notice}}</span></div>{{end}}
+  {{if .Err}}<div class="flash flash--error" style="margin-block-end:1rem"><span class="flash__mark">&#9888;</span><span>{{.Err}}</span></div>{{end}}
+
+  {{/* ---- session lifetime ---- */}}
+  <form hx-post="/settings/session-expiry" hx-target="#settings-security" hx-swap="outerHTML"
+        style="display:grid;gap:.75rem;max-width:24rem;margin-block-end:1.5rem">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="field" style="margin:0">
+      <label class="label" for="session-expiry">Keep me signed in for</label>
+      <select class="select" id="session-expiry" name="session_expiry_days">
+        {{$exp := .SessionExpiryKey}}
+        <option value="7" {{if eq $exp "7"}}selected{{end}}>7 days</option>
+        <option value="30" {{if eq $exp "30"}}selected{{end}}>30 days</option>
+        <option value="90" {{if eq $exp "90"}}selected{{end}}>90 days</option>
+        <option value="365" {{if eq $exp "365"}}selected{{end}}>1 year</option>
+        <option value="never" {{if eq $exp "never"}}selected{{end}}>Never &mdash; until I sign out</option>
+      </select>
+      <span class="helper">
+        Sessions are extended as you use the app, so an active session never
+        hits its deadline. The change applies to your current session right away.
+      </span>
+    </div>
+    <button class="btn" type="submit" style="justify-self:start">Save</button>
+  </form>
+
+  <hr style="border:0;border-block-start:1px solid var(--color-rule);margin:1.25rem 0">
+
+  {{/* ---- two-factor authentication ---- */}}
+  <span class="label" style="display:block;margin-block-end:.5rem">Two-factor authentication</span>
+
+  {{if .TwoFactor.Enrolled}}
+    <p class="helper" style="margin-block-end:.75rem">
+      On. Signing in needs your password plus a code from your authenticator app.
+      {{if gt .TwoFactor.Remaining 0}}
+        You have <strong>{{.TwoFactor.Remaining}}</strong> unused recovery code{{if ne .TwoFactor.Remaining 1}}s{{end}}.
+      {{else}}
+        You have <strong>no recovery codes left</strong> &mdash; generate new ones now, or you can be locked out if you lose your phone.
+      {{end}}
+    </p>
+
+    {{if .TwoFactor.RecoveryCodes}}
+    <div style="border:1px solid var(--color-rule);border-radius:12px;padding:1rem;margin-block-end:1rem;background:var(--color-surface)">
+      <p class="helper helper--error" style="margin-block-end:.5rem">
+        <strong>Save these now.</strong> Each code works exactly once. This is the only time they are shown.
+      </p>
+      <ol style="margin:0;padding-inline-start:1.25rem;columns:2;font-variant-numeric:tabular-nums">
+        {{range .TwoFactor.RecoveryCodes}}<li style="font-family:ui-monospace,monospace">{{.}}</li>{{end}}
+      </ol>
+    </div>
+    {{end}}
+
+    <div style="display:flex;flex-wrap:wrap;gap:.75rem">
+      <form hx-post="/settings/2fa/codes" hx-target="#settings-security" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <button class="btn" type="submit">Generate new recovery codes</button>
+      </form>
+      <form hx-post="/settings/2fa/disable" hx-target="#settings-security" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <button class="btn btn--ghost" type="submit">Turn off two-factor</button>
+      </form>
+    </div>
+
+  {{else if .TwoFactor.Pending}}
+    <p class="helper" style="margin-block-end:.75rem">
+      Scan this QR code with Google Authenticator (or any TOTP app), then enter
+      the 6-digit code it shows to finish turning it on.
+    </p>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;margin-block-end:1rem">
+      {{if .TwoFactor.QRData}}<img src="{{safeURL .TwoFactor.QRData}}" width="220" height="220" alt="QR code for the authenticator app" style="border:1px solid var(--color-rule);border-radius:12px">{{end}}
+      <div style="max-width:16rem">
+        <span class="label">Secret</span>
+        <p style="font-family:ui-monospace,monospace;font-size:.875rem;word-break:break-all;margin-block:.25rem .5rem">{{.TwoFactor.Secret}}</p>
+        <p class="helper">Can't scan? Type this secret into your app instead.</p>
+      </div>
+    </div>
+    <form hx-post="/settings/2fa/confirm" hx-target="#settings-security" hx-swap="outerHTML"
+          style="display:grid;gap:.75rem;max-width:18rem">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <div class="field" style="margin:0">
+        <label class="label" for="2fa-code">6-digit code</label>
+        <input class="input" id="2fa-code" name="code" inputmode="numeric" autocomplete="one-time-code"
+               placeholder="000000" required>
+      </div>
+      <button class="btn" type="submit" style="justify-self:start">Activate</button>
+    </form>
+
+  {{else}}
+    <p class="helper" style="margin-block-end:.75rem">
+      Off. Turn it on to require a code from your authenticator app at every
+      sign-in, and to protect the sensitive actions below (password change,
+      recovery codes, data export).
+    </p>
+    <form hx-post="/settings/2fa/enroll" hx-target="#settings-security" hx-swap="outerHTML">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <button class="btn" type="submit">Enable two-factor authentication</button>
+    </form>
+  {{end}}
+</section>
+{{end}}
+
+{{/* File-level body so view.Partial(w, "partials/settings-security", data) also works. */}}
+{{template "settings-security" .}}

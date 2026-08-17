@@ -26,8 +26,15 @@ func (v *View) funcs() template.FuncMap {
 		"dict":      dict,
 		"json":      toJSON,
 		"kindIs":    kindIs,
+		"safeURL":   safeURL,
 	}
 }
+
+// safeURL marks a string as a trusted URL. It is only for the server-generated
+// QR data URI in the 2FA enrollment panel: html/template's URL filter rejects
+// data: URIs outright, and this value comes from our own png encoder, never
+// from user input.
+func safeURL(u string) template.URL { return template.URL(u) }
 
 // pct100 renders hundredths of a percent: 530 -> "5.3%".
 func pct100(hundredths int64) string {

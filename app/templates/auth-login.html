@@ -27,6 +27,27 @@
   </header>
 
   <div class="card" style="padding:1.5rem">
+    {{if and .Data .Data.TwoFactor}}
+    <h2 style="font-size:1.0625rem;margin-block-end:1.25rem">Two-factor authentication</h2>
+    <p class="helper" style="margin-block-end:1rem">
+      Password verified — now enter the 6-digit code from your authenticator app.
+      Lost your phone? A recovery code works too.
+    </p>
+    <form method="post" action="/login">
+      {{with .Data}}{{with .Error}}<p class="helper helper--error" role="alert">{{.}}</p>{{end}}{{end}}
+      <input type="hidden" name="email" value="{{.Data.Email}}">
+
+      <div class="field">
+        <label class="label" for="code">Code</label>
+        <input class="input" id="code" name="code" autocomplete="one-time-code"
+               placeholder="000000"
+               required aria-required="true" aria-describedby="code-help" autofocus>
+        <span class="helper" id="code-help">6 digits from your authenticator, or a recovery code.</span>
+      </div>
+
+      <button type="submit" class="btn btn--primary" style="width:100%">Verify and sign in</button>
+    </form>
+    {{else}}
     <h2 style="font-size:1.0625rem;margin-block-end:1.25rem">Sign in</h2>
 
     <form method="post" action="/login">
@@ -52,6 +73,7 @@
 
       <button type="submit" class="btn btn--primary" style="width:100%">Sign in</button>
     </form>
+    {{end}}
 
     <p class="auth__meta">
       No household yet? <a class="link" href="/signup">Create one</a>.

@@ -26,6 +26,12 @@ func registerBackup(mux *http.ServeMux, d *Deps,
 
 	mux.HandleFunc("GET /settings/export", func(w http.ResponseWriter, r *http.Request) {
 		sess := auth.FromContext(r)
+		// The whole household's financial history leaves the server: a fresh
+		// step-up (password + TOTP) is required first.
+		if auth.RequiresStepUp(sess) {
+			renderStepUp(d, w, r, "export", "", http.StatusOK)
+			return
+		}
 		b, err := d.Store.ExportHousehold(sess.Household.ID)
 		if err != nil {
 			http.Error(w, "could not export", http.StatusInternalServerError)
@@ -48,6 +54,11 @@ func registerBackup(mux *http.ServeMux, d *Deps,
 		fail := func(msg string) {
 			partial(w, r, "settings-backup", "", msg, http.StatusUnprocessableEntity)
 		}
+
+		// Note: import is deliberately NOT step-up gated in v1. It is destructive
+		// (replaces the household), but the re-auth form would eat the user's
+		// uploaded file, so it stays behind CSRF + the explicit confirmation
+		// checkbox until a flow exists that survives the challenge.
 
 		r.Body = http.MaxBytesReader(w, r.Body, maxImportBytes)
 		if err := r.ParseMultipartForm(1 << 20); err != nil {
