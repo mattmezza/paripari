@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,27 @@ type rateRow struct {
 	Age string
 }
 
+// sessionExpiryKey maps the user's session-lifetime preference to the value
+// of the settings select.
+func sessionExpiryKey(days *int) string {
+	if days == nil {
+		return "never"
+	}
+	return strconv.Itoa(*days)
+}
+
+// parseSessionExpiry reads the settings select; nil means "never expire".
+func parseSessionExpiry(v string) (*int, error) {
+	if v == "never" || v == "" {
+		return nil, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || (n != 7 && n != 30 && n != 90 && n != 365) {
+		return nil, fmt.Errorf("Pick a valid session lifetime.")
+	}
+	return &n, nil
+}
+
 // settingsData backs both the full page and each swappable section.
 type settingsData struct {
 	CSRF               string
@@ -31,6 +53,12 @@ type settingsData struct {
 	GoldAge          string
 	GoldManualInput  string // "" = no override
 	EffectiveGoldPPG int64  // what the app is actually using right now
+
+	// SessionExpiryKey is the current user's session lifetime as the select's
+	// value: "7", "30", "90", "365" or "never".
+	SessionExpiryKey string
+	TwoFactor        *twoFactorState
+	StepUp           *stepUpData // non-nil renders the step-up form instead of the account card
 
 	Notice string // transient inline confirmation, set only on the response to a mutation
 	Err    string
@@ -64,6 +92,17 @@ func buildSettingsData(d *Deps, r *http.Request) (*settingsData, error) {
 	data := &settingsData{CSRF: sess.Token, Household: *hh, Currencies: view.Currencies, JoinStatus: "1/2"}
 	if sess.User != nil {
 		data.PartnerA = *sess.User
+		data.SessionExpiryKey = sessionExpiryKey(sess.User.SessionExpiryDays)
+		tf := &twoFactorState{Enrolled: sess.User.TOTPEnabled, Remaining: len(sess.User.RecoveryCodes)}
+		if !sess.User.TOTPEnabled && sess.User.TOTPSecret != "" {
+			// Mid-enrollment: the secret exists but no code has activated it yet.
+			tf.Pending = true
+			tf.Secret = sess.User.TOTPSecret
+			if uri, err := auth.TOTPURI(sess.User.Email, sess.User.TOTPSecret); err == nil {
+				tf.QRData, _ = auth.TOTPQRDataURI(uri)
+			}
+		}
+		data.TwoFactor = tf
 	}
 	if sess.Partner != nil {
 		data.PartnerB = *sess.Partner
@@ -119,6 +158,7 @@ func registerSettings(mux *http.ServeMux, d *Deps) {
 	})
 
 	registerBackup(mux, d, partial)
+	registerSecurity(mux, d, partial)
 
 	mux.HandleFunc("POST /settings/household", func(w http.ResponseWriter, r *http.Request) {
 		sess := auth.FromContext(r)
@@ -202,8 +242,34 @@ func registerSettings(mux *http.ServeMux, d *Deps) {
 		partial(w, r, "settings-data", notice, errMsg, http.StatusOK)
 	})
 
+	// Session lifetime: per-user, applies to the current session immediately.
+	mux.HandleFunc("POST /settings/session-expiry", func(w http.ResponseWriter, r *http.Request) {
+		sess := auth.FromContext(r)
+		days, err := parseSessionExpiry(r.PostFormValue("session_expiry_days"))
+		if err != nil {
+			partial(w, r, "settings-security", "", err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		if err := d.Store.UpdateUserSessionExpiry(sess.User.ID, days); err != nil {
+			http.Error(w, "could not save settings", http.StatusInternalServerError)
+			return
+		}
+		// Apply to the live session right away, not on next login.
+		sess.User.SessionExpiryDays = days
+		if err := d.Auth.RefreshSession(w, sess.Token, sess.User); err != nil {
+			http.Error(w, "could not save settings", http.StatusInternalServerError)
+			return
+		}
+		partial(w, r, "settings-security", "Saved. Your current session now follows this lifetime.", "", http.StatusOK)
+	})
+
 	mux.HandleFunc("POST /settings/password", func(w http.ResponseWriter, r *http.Request) {
 		sess := auth.FromContext(r)
+		// Password changes are sensitive: require a fresh step-up first.
+		if auth.RequiresStepUp(sess) {
+			renderStepUp(d, w, r, "password", "", http.StatusOK)
+			return
+		}
 		current, next := r.PostFormValue("current_password"), r.PostFormValue("new_password")
 		if sess.User == nil || !auth.VerifyPassword(sess.User.PasswordHash, current) {
 			render(w, r, "", "Current password is wrong.", http.StatusUnprocessableEntity)
@@ -222,7 +288,12 @@ func registerSettings(mux *http.ServeMux, d *Deps) {
 			http.Error(w, "could not set password", http.StatusInternalServerError)
 			return
 		}
-		view.SetFlash(w, "Password updated.")
+		// The current session stays; every other session for this user is dead.
+		if err := d.Store.DeleteOtherSessions(sess.Token, sess.User.ID); err != nil {
+			http.Error(w, "could not revoke other sessions", http.StatusInternalServerError)
+			return
+		}
+		view.SetFlash(w, "Password updated. Other devices were signed out.")
 		redirect(w, r, "/settings")
 	})
 

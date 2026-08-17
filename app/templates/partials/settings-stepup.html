@@ -1,0 +1,53 @@
+{{/* Step-up re-auth: replaces the account/security cards until the session is
+     freshly verified. dot: *settingsData */}}
+{{define "settings-stepup"}}
+<section class="card" id="settings-stepup" style="margin-block-end:1.5rem">
+  <div class="card__head"><span class="card__title">Confirm it's you</span></div>
+
+  <p class="helper" style="margin-block-end:1rem">
+    This action is sensitive, so PariPari wants proof it's really you on this
+    device. Enter your password{{if .TwoFactor.Enrolled}} and a code from your
+    authenticator app (or a recovery code){{end}} to continue.
+  </p>
+
+  {{if .Err}}<p class="helper helper--error" role="alert" style="margin-block-end:1rem">{{.Err}}</p>{{end}}
+
+  <form method="post" action="/settings/step-up" style="display:grid;gap:.75rem;max-width:24rem">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="next" value="{{.StepUp.Next}}">
+
+    <div class="field" style="margin:0">
+      <label class="label" for="su-password">Password</label>
+      <input class="input" id="su-password" name="password" type="password"
+             autocomplete="current-password" required aria-required="true" autofocus>
+    </div>
+
+    {{if .TwoFactor.Enrolled}}
+    <div class="field" style="margin:0">
+      <label class="label" for="su-code">Authenticator code</label>
+      <input class="input" id="su-code" name="code" autocomplete="one-time-code"
+             placeholder="000000" required aria-required="true">
+      <span class="helper">6 digits from your authenticator, or a recovery code.</span>
+    </div>
+    {{end}}
+
+    {{if eq .StepUp.Next "password"}}
+    <div class="field" style="margin:0">
+      <label class="label" for="su-new">New password</label>
+      <input class="input" id="su-new" name="new_password" type="password"
+             autocomplete="new-password" minlength="8" required aria-required="true">
+      <span class="helper">At least 8 characters. Signing in elsewhere is not affected yet &mdash; the password change itself signs other devices out.</span>
+    </div>
+    {{end}}
+
+    <button class="btn" type="submit" style="justify-self:start">Confirm</button>
+  </form>
+
+  <p class="helper" style="margin-block-start:1rem">
+    Changed your mind? <a class="link" href="/settings" hx-boost="false">Back to settings</a>.
+  </p>
+</section>
+{{end}}
+
+{{/* File-level body so the settings page can include it. */}}
+{{template "settings-stepup" .}}

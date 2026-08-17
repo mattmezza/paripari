@@ -177,8 +177,13 @@ func runDaily(ctx context.Context, st *store.Store) {
 
 type sessionGC struct{ st *store.Store }
 
-func (sessionGC) Name() string                { return "session-gc" }
-func (s sessionGC) Run(context.Context) error { return s.st.DeleteExpiredSessions() }
+func (sessionGC) Name() string { return "session-gc" }
+func (s sessionGC) Run(context.Context) error {
+	if err := s.st.DeleteExpiredSessions(); err != nil {
+		return err
+	}
+	return s.st.DeleteExpiredPendingLogins()
+}
 
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

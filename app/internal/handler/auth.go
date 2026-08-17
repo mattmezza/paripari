@@ -13,6 +13,8 @@ type authForm struct {
 	Email  string
 	Name   string
 	Invite string
+	// TwoFactor renders the TOTP code step instead of the email/password form.
+	TwoFactor bool
 }
 
 func registerAuth(mux *http.ServeMux, d *Deps) {
@@ -21,18 +23,60 @@ func registerAuth(mux *http.ServeMux, d *Deps) {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
-		d.View.Render(w, r, "auth-login", &view.PageData{Title: "Log in", Data: &authForm{}})
+		f := &authForm{}
+		if p := d.Auth.PendingUser(r); p != nil {
+			// Mid-way through a 2FA login: show the code step.
+			f.Email, f.TwoFactor = p.Email, true
+		}
+		d.View.Render(w, r, "auth-login", &view.PageData{Title: "Log in", Data: f})
 	})))
 
 	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
 		email, password := r.PostFormValue("email"), r.PostFormValue("password")
+		code := r.PostFormValue("code")
+
+		// A pending-login cookie means the password already passed and we are
+		// waiting for the TOTP / recovery code.
+		if pending := d.Auth.PendingUser(r); pending != nil {
+			ok := auth.ValidateTOTP(pending.TOTPSecret, code)
+			if !ok {
+				if remaining, matched := auth.VerifyRecoveryCode(pending, code); matched {
+					if err := d.Store.ConsumeRecoveryCode(pending.ID, remaining); err == nil {
+						ok = true
+					}
+				}
+			}
+			if !ok {
+				d.View.RenderStatus(w, r, http.StatusUnauthorized, "auth-login",
+					&view.PageData{Title: "Log in", Data: &authForm{
+						Error: "That code isn't right. Check the app, or use one of your recovery codes.",
+						Email: pending.Email, TwoFactor: true}})
+				return
+			}
+			if err := d.Auth.FinishPendingLogin(w, r, pending); err != nil {
+				http.Error(w, "could not start session", http.StatusInternalServerError)
+				return
+			}
+			redirect(w, r, "/")
+			return
+		}
+
 		u, err := auth.Login(d.Store, email, password)
 		if err != nil {
 			d.View.RenderStatus(w, r, http.StatusUnauthorized, "auth-login",
 				&view.PageData{Title: "Log in", Data: &authForm{Error: err.Error(), Email: email}})
 			return
 		}
-		if err := d.Auth.StartSession(w, u.ID); err != nil {
+		if u.TOTPEnabled {
+			if err := d.Auth.StartPendingLogin(w, u.ID); err != nil {
+				http.Error(w, "could not start session", http.StatusInternalServerError)
+				return
+			}
+			d.View.Render(w, r, "auth-login",
+				&view.PageData{Title: "Log in", Data: &authForm{Email: u.Email, TwoFactor: true}})
+			return
+		}
+		if err := d.Auth.StartSession(w, u); err != nil {
 			http.Error(w, "could not start session", http.StatusInternalServerError)
 			return
 		}
@@ -61,7 +105,7 @@ func registerAuth(mux *http.ServeMux, d *Deps) {
 				&view.PageData{Title: "Sign up", Data: f})
 			return
 		}
-		if err := d.Auth.StartSession(w, u.ID); err != nil {
+		if err := d.Auth.StartSession(w, u); err != nil {
 			http.Error(w, "could not start session", http.StatusInternalServerError)
 			return
 		}

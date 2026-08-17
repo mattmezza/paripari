@@ -3,11 +3,13 @@ module github.com/mattmezza/paripari
 go 1.26
 
 require (
+	github.com/pquerna/otp v1.5.0
 	golang.org/x/crypto v0.54.0
 	modernc.org/sqlite v1.56.0
 )
 
 require (
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

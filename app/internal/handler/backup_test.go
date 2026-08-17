@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -44,6 +45,12 @@ func upload(t *testing.T, h http.Handler, body []byte, confirm bool, c *http.Coo
 
 func exportBytes(t *testing.T, h http.Handler, c *http.Cookie) []byte {
 	t.Helper()
+	// Export is step-up gated: prove the password first, then fetch.
+	if w := do(t, h, http.MethodPost, "/settings/step-up", url.Values{
+		"password": {"paripari123"}, "next": {"export"},
+	}, c); w.Code != http.StatusSeeOther {
+		t.Fatalf("step-up: %d: %s", w.Code, w.Body.String())
+	}
 	r := httptest.NewRequest(http.MethodGet, "/settings/export", nil)
 	r.AddCookie(c)
 	w := httptest.NewRecorder()

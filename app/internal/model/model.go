@@ -23,13 +23,27 @@ type User struct {
 	PasswordHash string
 	Name         string
 	CreatedAt    string
+	// SessionExpiryDays is the session lifetime in days; nil means "never
+	// expire" (NULL in the database). 30 is the default for new users.
+	SessionExpiryDays *int
+	// TOTPSecret is the base32 secret; nil unless the user started enrollment.
+	TOTPSecret string
+	// TOTPEnabled is true once a valid code activated the secret.
+	TOTPEnabled bool
+	// RecoveryCodes holds SHA-256 hex digests of the single-use recovery
+	// codes. Plaintext codes are shown exactly once, at activation/rotation.
+	RecoveryCodes []string
 }
 
 type Session struct {
 	Token     string
 	UserID    int64
 	CreatedAt string
+	// ExpiresAt is the ISO8601 expiry; "" means the session never expires.
 	ExpiresAt string
+	// VerifiedAt is the ISO8601 timestamp of the last step-up re-auth; ""
+	// means the session has never passed a step-up challenge.
+	VerifiedAt string
 }
 
 type IncomeSource struct {

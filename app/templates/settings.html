@@ -7,6 +7,11 @@
 {{template "settings-data" $d}}
 {{template "settings-backup" $d}}
 
+{{if $d.StepUp}}
+{{template "settings-stepup" $d}}
+{{else}}
+{{template "settings-security" $d}}
+
 <section class="card">
   <div class="card__head"><span class="card__title">Account</span></div>
 
@@ -31,6 +36,7 @@
     <button class="btn btn--ghost" type="submit">Log out</button>
   </form>
 </section>
+{{end}}
 
 {{/* Danger zone: no delete-household in v1 (see settings.go) — nothing to show here. */}}
 {{end}}
