@@ -369,17 +369,21 @@ func buildExpensesData(in service.Inputs, filter string) *expensesData {
 			groups[key] = g
 			order = append(order, key)
 		}
+		// Convert each expense into the household display currency once, so the
+		// subtotal and partner shares agree with BuildOverview (see #3). The
+		// inline-edit input keeps the native amount below.
+		amt := service.Convert(in.Rates, e.AmountCents, e.Currency, in.Display)
 		row := expenseRowView{Exp: e, AmountStr: CentsToStr(e.AmountCents)}
 		if e.AccountID != nil {
 			row.AccountName = accountNames[*e.AccountID]
 		}
 		if e.Category == "common" {
-			row.ShareACents, row.ShareBCents = service.ShareOf(e.AmountCents, ratio)
+			row.ShareACents, row.ShareBCents = service.ShareOf(amt, ratio)
 		} else if e.UserID != nil {
 			row.OwnerName = names[*e.UserID]
 		}
 		g.Rows = append(g.Rows, row)
-		g.SubtotalCents += e.AmountCents
+		g.SubtotalCents += amt
 	}
 
 	data := &expensesData{
