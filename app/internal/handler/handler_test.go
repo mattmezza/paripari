@@ -23,6 +23,12 @@ func newServer(t *testing.T) http.Handler {
 }
 
 func newServerStore(t *testing.T) (http.Handler, *store.Store) {
+	return newServerStoreRates(t, view.Identity)
+}
+
+// newServerStoreRates is newServerStore with a caller-supplied rate provider,
+// for tests that exercise currency conversion.
+func newServerStoreRates(t *testing.T, rates view.RateProvider) (http.Handler, *store.Store) {
 	t.Helper()
 	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -45,7 +51,7 @@ func newServerStore(t *testing.T) (http.Handler, *store.Store) {
 	}
 	return handler.New(&handler.Deps{
 		Store: st, View: v, Auth: auth.NewManager(st, false),
-		Rates: view.Identity, BaseURL: "http://test", Static: fs.FS(static.FS),
+		Rates: rates, BaseURL: "http://test", Static: fs.FS(static.FS),
 	}), st
 }
 

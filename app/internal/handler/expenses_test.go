@@ -2,10 +2,12 @@ package handler_test
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -92,5 +94,58 @@ func TestExpensesAnalysisPayload(t *testing.T) {
 	}
 	if total != 1000000 {
 		t.Errorf("outflow from the earner = %d cents, want the full 10'000 net income", total)
+	}
+}
+
+// fixedRates converts TRY→CHF at a fixed 0.095 (1000 TRY = 95 CHF) and passes
+// everything else through untouched, so handler tests can exercise conversion
+// without a live FX source.
+type fixedRates struct{}
+
+func (fixedRates) Convert(cents int64, from, to string) int64 {
+	if from == "TRY" && to == "CHF" {
+		return int64(math.Round(float64(cents) * 0.095))
+	}
+	return cents
+}
+
+// Regression test for #3: an expense in a currency other than the household's
+// display currency must be converted before the list sums subtotals and splits
+// partner shares, so the list agrees with the dashboard. The inline edit input
+// keeps the native amount so edits round-trip in that currency.
+func TestExpensesListConvertsNonDisplayCurrency(t *testing.T) {
+	h, _ := newServerStoreRates(t, fixedRates{})
+	c := sessionCookie(t, post(t, h, "/signup", url.Values{
+		"name": {"Elena"}, "email": {"e@example.com"}, "password": {"paripari123"},
+	}, nil))
+
+	if w := postHX(t, h, "/expenses", url.Values{
+		"name": {"Holiday"}, "amount": {"1000"}, "currency": {"TRY"},
+		"category": {"common"}, "subcategory": {"travel"},
+	}, c); w.Code != 200 {
+		t.Fatalf("POST /expenses: %d %s", w.Code, w.Body.String())
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/expenses", nil)
+	r.AddCookie(c)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /expenses: %d %s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+
+	// 1000 TRY at the fixed 0.095 rate is 95.00 CHF. The list must show the
+	// converted figure — the raw 1'000.00 TRY labelled as CHF is the bug. The
+	// apostrophe thousands separator is HTML-escaped (&#39;) in the markup.
+	if strings.Contains(body, "CHF 1&#39;000.00") {
+		t.Errorf("expense list reports the raw TRY amount labelled as CHF: got 1'000.00 CHF")
+	}
+	if !strings.Contains(body, "CHF 95.00") {
+		t.Errorf("expense list does not show the converted TRY amount: want CHF 95.00")
+	}
+	// The inline-edit input keeps the native amount so edits round-trip in TRY.
+	if !strings.Contains(body, `value="1000.00"`) {
+		t.Errorf("inline edit input does not keep the native TRY amount")
 	}
 }

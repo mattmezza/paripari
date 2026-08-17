@@ -37,6 +37,13 @@ func conv(r Rates, cents int64, from, to string) int64 {
 	return r.Convert(cents, from, to)
 }
 
+// Convert expresses amountCents (in `from`) in `to` through r, identity when r
+// is nil or the currencies are equal/empty. Exported form of conv, for callers
+// (handlers) that must convert a single amount with the engine's own rules.
+func Convert(r Rates, cents int64, from, to string) int64 {
+	return conv(r, cents, from, to)
+}
+
 // Amount formats minor units like Money but without the currency prefix, for
 // UI spots that render the currency separately (e.g. a muted .figure__cur span).
 func Amount(cents int64, currency string) string {
